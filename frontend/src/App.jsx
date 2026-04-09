@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './ThemeContext';
 import Login from './pages/Login';
 import Wardrobe from './pages/Wardrobe';
 import Outfit from './pages/Outfit';
@@ -9,13 +10,15 @@ function PrivateRoute({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/wardrobe" element={<PrivateRoute><Wardrobe /></PrivateRoute>} />
-        <Route path="/outfit" element={<PrivateRoute><Outfit /></PrivateRoute>} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/wardrobe" element={<PrivateRoute><Wardrobe /></PrivateRoute>} />
+          <Route path="/outfit" element={<PrivateRoute><Outfit /></PrivateRoute>} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
