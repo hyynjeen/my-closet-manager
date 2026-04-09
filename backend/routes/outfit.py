@@ -1,6 +1,7 @@
 import os
 import random
 import requests
+from datetime import datetime, timezone, timedelta
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
@@ -55,7 +56,7 @@ def recommend():
 
     # 계절이 확인된 경우 해당 계절 옷 우선 필터링
     if season:
-        season_items = [i for i in items if i.season == season]
+        season_items = [i for i in items if season in (i.season or '').split(',')]
         if season_items:
             items = season_items
 
@@ -95,6 +96,15 @@ def save_outfit():
         temperature=data.get('temperature'),
     )
     db.session.add(outfit)
+
+    # 착용한 옷들의 last_worn_at 업데이트
+    now = datetime.now(timezone.utc)
+    for item_id in [data.get('top_id'), data.get('bottom_id'), data.get('outer_id'), data.get('shoes_id')]:
+        if item_id:
+            item = ClothingItem.query.get(item_id)
+            if item:
+                item.last_worn_at = now
+
     db.session.commit()
     return jsonify(outfit.to_dict()), 201
 
@@ -105,3 +115,30 @@ def saved_outfits():
     user_id = int(get_jwt_identity())
     outfits = Outfit.query.filter_by(user_id=user_id).order_by(Outfit.created_at.desc()).all()
     return jsonify([o.to_dict() for o in outfits])
+
+
+@outfit_bp.route('/stats', methods=['GET'])
+@jwt_required()
+def monthly_stats():
+    user_id = int(get_jwt_identity())
+    since = datetime.now(timezone.utc) - timedelta(days=30)
+
+    outfits = Outfit.query.filter(
+        Outfit.user_id == user_id,
+        Outfit.created_at >= since,
+    ).all()
+
+    count = {}
+    for o in outfits:
+        for item_id in [o.top_id, o.bottom_id, o.outer_id, o.shoes_id]:
+            if item_id:
+                count[item_id] = count.get(item_id, 0) + 1
+
+    all_items = ClothingItem.query.filter_by(user_id=user_id).all()
+    worn_items = [{'item': i.to_dict(), 'count': count.get(i.id, 0)} for i in all_items]
+    worn_items.sort(key=lambda x: x['count'])
+
+    least = [x for x in worn_items if x['count'] == 0 or True][:3]
+    most = sorted(worn_items, key=lambda x: x['count'], reverse=True)[:3]
+
+    return jsonify({'most_worn': most, 'least_worn': least})

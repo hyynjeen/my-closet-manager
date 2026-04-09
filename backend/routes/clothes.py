@@ -58,6 +58,7 @@ def create_clothing():
         color=data.get('color'),
         season=data.get('season'),
         style=data.get('style'),
+        material=data.get('material'),
         image_url=image_url,
     )
     db.session.add(item)
@@ -72,7 +73,7 @@ def update_clothing(item_id):
     item = ClothingItem.query.filter_by(id=item_id, user_id=user_id).first_or_404()
     data = request.get_json()
 
-    for field in ('category', 'sub_category', 'color', 'season', 'style'):
+    for field in ('category', 'sub_category', 'color', 'season', 'style', 'material'):
         if field in data:
             setattr(item, field, data[field])
 

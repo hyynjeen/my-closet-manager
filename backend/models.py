@@ -30,10 +30,12 @@ class ClothingItem(db.Model):
     category = db.Column(db.String(50))        # 상의/하의/아우터/신발/기타
     sub_category = db.Column(db.String(50))    # 티셔츠/셔츠/니트 등
     color = db.Column(db.String(30))
-    season = db.Column(db.String(20))          # 봄/여름/가을/겨울
+    season = db.Column(db.String(100))         # 봄,여름,가을,겨울 (복수 선택 가능)
     style = db.Column(db.String(50))
+    material = db.Column(db.String(50))        # 소재
     image_url = db.Column(db.String(300))      # Cloudinary URL
     created_at = db.Column(db.DateTime, server_default=db.func.now())
+    last_worn_at = db.Column(db.DateTime, nullable=True)  # 마지막 착용일
 
     def to_dict(self):
         return {
@@ -44,8 +46,10 @@ class ClothingItem(db.Model):
             'color': self.color,
             'season': self.season,
             'style': self.style,
+            'material': self.material,
             'image_url': self.image_url,
             'created_at': self.created_at.isoformat() if self.created_at else None,
+            'last_worn_at': self.last_worn_at.isoformat() if self.last_worn_at else None,
         }
 
 
