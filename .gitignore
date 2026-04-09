@@ -1,0 +1,18 @@
+# 환경변수
+backend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.db
+venv/
+.venv/
+
+# Node
+frontend/node_modules/
+frontend/build/
+
+# OS
+.DS_Store
+Thumbs.db
