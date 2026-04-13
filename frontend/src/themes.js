@@ -1,18 +1,18 @@
 export const themes = {
   default: {
     name: '기본',
-    bg: '#F8F9FA',
-    card: '#FFFFFF',
-    primary: '#1E3A5F',
+    bg: '#FFFFFF',        /* 흰색 70% — 메인 배경 */
+    card: '#F5F6F8',      /* 연회색 — 카드/섹션 배경 */
+    primary: '#1E3A5F',   /* 남색 10% — 버튼·강조 */
     primaryText: '#FFFFFF',
-    secondary: '#6B7280',
-    border: '#E5E7EB',
-    text: '#111827',
-    subText: '#6B7280',
-    accent: '#3B82F6',
-    statA: '#EFF6FF',
-    statB: '#FEF2F2',
-    navBg: '#1E3A5F',
+    secondary: '#4B5563', /* 진회색 — 보조 텍스트 */
+    border: '#E2E4E9',    /* 연회색 20% — 구분선·테두리 */
+    text: '#1A1A2E',      /* 거의 남색 계열 — 본문 */
+    subText: '#8A93A2',   /* 중회색 — 부제·힌트 */
+    accent: '#2B5EA7',    /* 밝은 남색 — 강조 포인트 */
+    statA: '#F0F4FA',     /* 남색 틴트 — 통계 카드A */
+    statB: '#F5F6F8',     /* 연회색 — 통계 카드B */
+    navBg: '#1E3A5F',     /* 남색 — 네비게이션 */
     navText: '#FFFFFF',
   },
   wood: {
