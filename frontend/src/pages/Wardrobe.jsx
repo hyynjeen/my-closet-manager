@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeContext';
+import NavBar from '../components/NavBar';
+
+const NAV_LINKS = [
+  { to: '/outfit', label: '코디 추천' },
+  { to: '/calendar', label: '착용 기록' },
+];
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -20,7 +26,7 @@ const emptyForm = { category: '', sub_category: '', color: '', seasons: [], styl
 
 export default function Wardrobe() {
   const navigate = useNavigate();
-  const { theme, themeKey, changeTheme, themes } = useTheme();
+  const { theme } = useTheme();
   const [clothes, setClothes] = useState([]);
   const [activeCategory, setActiveCategory] = useState('');
   const [form, setForm] = useState(emptyForm);
@@ -102,8 +108,6 @@ export default function Wardrobe() {
     loadStats();
   };
 
-  const handleLogout = () => { localStorage.removeItem('token'); navigate('/login'); };
-
   const formatDate = (iso) => {
     if (!iso) return '-';
     return new Date(iso).toLocaleDateString('ko-KR');
@@ -128,31 +132,7 @@ export default function Wardrobe() {
   return (
     <div style={{ minHeight: '100vh', background: theme.bg, color: theme.text }}>
 
-      {/* 네비게이션 */}
-      <nav style={{ background: theme.navBg, padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet Manager</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* 테마 선택 */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {Object.entries(themes).map(([key, t]) => (
-              <button
-                key={key}
-                onClick={() => changeTheme(key)}
-                title={t.name}
-                style={{
-                  width: 20, height: 20, borderRadius: '50%', border: themeKey === key ? '2px solid #fff' : '2px solid transparent',
-                  background: t.primary, cursor: 'pointer', padding: 0,
-                }}
-              />
-            ))}
-          </div>
-          <Link to="/outfit" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>코디 추천</Link>
-          <Link to="/calendar" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>착용 기록</Link>
-          <button onClick={handleLogout} style={{ ...btnGhost, color: theme.navText, borderColor: 'rgba(255,255,255,0.3)', fontSize: 13 }}>로그아웃</button>
-        </div>
-      </nav>
+      <NavBar links={NAV_LINKS} />
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 24px' }}>
 

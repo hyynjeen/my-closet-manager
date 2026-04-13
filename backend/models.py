@@ -7,7 +7,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(256), nullable=False)
-    nickname = db.Column(db.String(80))
+    nickname = db.Column(db.String(80), nullable=False)
+    height = db.Column(db.Float, nullable=True)
+    weight = db.Column(db.Float, nullable=True)
+    personal_color = db.Column(db.String(20), nullable=True)
+    profile_image = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     clothes = db.relationship('ClothingItem', backref='owner', lazy=True)
@@ -18,6 +22,10 @@ class User(db.Model):
             'id': self.id,
             'email': self.email,
             'nickname': self.nickname,
+            'height': self.height,
+            'weight': self.weight,
+            'personal_color': self.personal_color,
+            'profile_image': self.profile_image,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
 

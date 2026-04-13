@@ -6,7 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { theme, themeKey, changeTheme, themes } = useTheme();
+  const { theme } = useTheme();
   const [form, setForm] = useState({ email: '', password: '', nickname: '' });
   const [error, setError] = useState('');
   const [isRegister, setIsRegister] = useState(false);
@@ -16,6 +16,12 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+
+    if (isRegister && !form.nickname.trim()) {
+      setError('닉네임을 입력해주세요.');
+      return;
+    }
+
     const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
     const body = isRegister
       ? { email: form.email, password: form.password, nickname: form.nickname }
@@ -35,20 +41,15 @@ export default function Login() {
       alert('회원가입 성공! 로그인해주세요.');
     } else {
       localStorage.setItem('token', data.access_token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       navigate('/wardrobe');
     }
   };
 
   const inputStyle = {
-    width: '100%',
-    padding: '10px 14px',
-    border: `1px solid ${theme.border}`,
-    borderRadius: 8,
-    fontSize: 14,
-    background: theme.bg,
-    color: theme.text,
-    boxSizing: 'border-box',
-    outline: 'none',
+    width: '100%', padding: '10px 14px', border: `1px solid ${theme.border}`,
+    borderRadius: 8, fontSize: 14, background: theme.bg, color: theme.text,
+    boxSizing: 'border-box', outline: 'none',
   };
 
   return (
@@ -80,7 +81,7 @@ export default function Login() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <input name="email" type="email" placeholder="이메일" value={form.email} onChange={handleChange} required style={inputStyle} />
           {isRegister && (
-            <input name="nickname" placeholder="닉네임 (선택)" value={form.nickname} onChange={handleChange} style={inputStyle} />
+            <input name="nickname" placeholder="닉네임 *" value={form.nickname} onChange={handleChange} required style={inputStyle} />
           )}
           <input name="password" type="password" placeholder="비밀번호" value={form.password} onChange={handleChange} required style={inputStyle} />
           {error && <p style={{ margin: 0, fontSize: 13, color: '#EF4444' }}>{error}</p>}
@@ -92,27 +93,6 @@ export default function Login() {
             }}
           >{isRegister ? '가입하기' : '로그인'}</button>
         </form>
-
-        {/* 테마 선택 */}
-        <div style={{ marginTop: 32, paddingTop: 20, borderTop: `1px solid ${theme.border}` }}>
-          <p style={{ margin: '0 0 10px', fontSize: 12, color: theme.subText, textAlign: 'center' }}>테마 선택</p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            {Object.entries(themes).map(([key, t]) => (
-              <button
-                key={key}
-                onClick={() => changeTheme(key)}
-                title={t.name}
-                style={{
-                  width: 28, height: 28, borderRadius: '50%', border: themeKey === key ? `2px solid ${theme.accent}` : `2px solid transparent`,
-                  background: t.primary, cursor: 'pointer', padding: 0,
-                }}
-              />
-            ))}
-          </div>
-          <p style={{ margin: '8px 0 0', fontSize: 11, color: theme.subText, textAlign: 'center' }}>
-            {themes[themeKey].name}
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -1,6 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useTheme } from '../ThemeContext';
+import NavBar from '../components/NavBar';
+
+const NAV_LINKS = [
+  { to: '/wardrobe', label: '내 옷장' },
+  { to: '/calendar', label: '착용 기록' },
+];
 
 const API_URL = process.env.REACT_APP_API_URL || '';
 
@@ -14,7 +19,7 @@ const authFetch = (path, options = {}) =>
   });
 
 export default function Outfit() {
-  const { theme, themeKey, changeTheme, themes } = useTheme();
+  const { theme } = useTheme();
   const [result, setResult] = useState(null);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -70,30 +75,7 @@ export default function Outfit() {
   return (
     <div style={{ minHeight: '100vh', background: theme.bg, color: theme.text }}>
 
-      {/* 네비게이션 */}
-      <nav style={{ background: theme.navBg, padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet Manager</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* 테마 선택 */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {Object.entries(themes).map(([key, t]) => (
-              <button
-                key={key}
-                onClick={() => changeTheme(key)}
-                title={t.name}
-                style={{
-                  width: 20, height: 20, borderRadius: '50%', border: themeKey === key ? '2px solid #fff' : '2px solid transparent',
-                  background: t.primary, cursor: 'pointer', padding: 0,
-                }}
-              />
-            ))}
-          </div>
-          <Link to="/wardrobe" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>내 옷장</Link>
-          <Link to="/calendar" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>착용 기록</Link>
-        </div>
-      </nav>
+      <NavBar links={NAV_LINKS} />
 
       <div style={{ maxWidth: 560, margin: '0 auto', padding: '40px 24px' }}>
         <h2 style={{ margin: '0 0 24px', fontSize: 20, fontWeight: 700 }}>오늘의 코디 추천</h2>
@@ -156,6 +138,23 @@ export default function Outfit() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* 퍼스널 컬러 추천 */}
+        {result?.recommended_colors?.length > 0 && (
+          <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px', marginTop: 20 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: theme.primary, marginBottom: 8 }}>
+              {result.personal_color} 추천 색상
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {result.recommended_colors.map((color) => (
+                <span key={color} style={{
+                  padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 500,
+                  background: theme.primary + '18', color: theme.primary, border: `1px solid ${theme.primary}33`,
+                }}>{color}</span>
+              ))}
+            </div>
           </div>
         )}
 

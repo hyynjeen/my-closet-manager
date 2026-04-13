@@ -6,7 +6,14 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 from app import db
-from models import ClothingItem, Outfit
+from models import ClothingItem, Outfit, User
+
+PERSONAL_COLOR_MAP = {
+    '봄 웜': ['코랄', '복숭아', '황금색', '아이보리', '연두색', '카멜'],
+    '여름 쿨': ['라벤더', '파우더 블루', '로즈 핑크', '민트', '라일락', '소프트 화이트'],
+    '가을 웜': ['머스타드', '올리브', '번트 오렌지', '카키', '브라운', '테라코타'],
+    '겨울 쿨': ['블랙', '화이트', '네이비', '진홍색', '로열 블루', '다크 그린'],
+}
 
 outfit_bp = Blueprint('outfit', __name__)
 
@@ -73,11 +80,16 @@ def recommend():
         'shoes': random.choice(by_category['신발']).to_dict() if '신발' in by_category else None,
     }
 
+    user = User.query.get(user_id)
+    recommended_colors = PERSONAL_COLOR_MAP.get(user.personal_color, []) if user and user.personal_color else []
+
     return jsonify({
         'outfit': outfit,
         'temperature': temp,
         'weather': weather,
         'season': season,
+        'personal_color': user.personal_color if user else None,
+        'recommended_colors': recommended_colors,
     })
 
 
