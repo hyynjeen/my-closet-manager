@@ -31,6 +31,7 @@ export default function Calendar() {
   const [clothes, setClothes] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [hoveredDate, setHoveredDate] = useState(null);
 
   const load = async () => {
     const res = await authFetch(`/api/outfit/calendar?year=${year}&month=${month}`);
@@ -64,7 +65,6 @@ export default function Calendar() {
 
   const dateKey = (d) =>
     `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-
   const todayKey = new Date().toISOString().slice(0, 10);
 
   const handleDayClick = (d) => {
@@ -79,7 +79,8 @@ export default function Calendar() {
     await loadClothes();
   };
 
-  const toggleItem = (id) => {
+  const toggleItem = (id, disabled) => {
+    if (disabled) return;
     setSelectedItems(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
@@ -101,160 +102,261 @@ export default function Calendar() {
   const byCategory = (cat) => clothes.filter(c => c.category === cat);
   const selectedOutfits = selectedDate ? (calendarData[dateKey(selectedDate)] || []) : [];
 
+  // 이미 착용 기록된 옷 ID 목록
+  const alreadyWornIds = new Set(
+    selectedOutfits.flatMap(o => (o.items || []).map(i => i.id))
+  );
+
+  // 달력 셀의 썸네일: items 배열 우선, 없으면 legacy top/outer/bottom
+  const getThumb = (outfits) => {
+    if (!outfits.length) return null;
+    const o = outfits[0];
+    return o.items?.[0]?.image_url || o.top?.image_url || o.outer?.image_url || o.bottom?.image_url || null;
+  };
+
+  // 달력에 표시할 작은 아이템 이미지들 (최대 4개)
+  const getMiniThumbs = (outfits) => {
+    if (!outfits.length) return [];
+    const items = outfits.flatMap(o =>
+      (o.items?.length ? o.items : [o.top, o.bottom, o.outer, o.shoes].filter(Boolean))
+    );
+    return items.slice(0, 4).map(i => i.image_url).filter(Boolean);
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: theme.bg, color: theme.text }}>
-
       <NavBar links={NAV_LINKS} />
 
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 24px', display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <div style={{ maxWidth: 920, margin: '0 auto', padding: '32px 24px', display: 'flex', gap: 24, alignItems: 'flex-start' }}>
 
         {/* 달력 */}
         <div style={{ flex: 1 }}>
           {/* 월 헤더 */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-            <button onClick={prevMonth}
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 22, color: theme.text, lineHeight: 1 }}>‹</button>
-            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>{year}년 {month}월</h2>
-            <button onClick={nextMonth}
-              style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 22, color: theme.text, lineHeight: 1 }}>›</button>
+            <button onClick={prevMonth} style={{ width: 36, height: 36, border: `1px solid ${theme.border}`, borderRadius: 8, background: theme.card, cursor: 'pointer', fontSize: 18, color: theme.text, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: theme.text }}>{year}년 {month}월</div>
+              <div style={{ fontSize: 12, color: theme.subText, marginTop: 2 }}>
+                이번 달 착용 기록: {Object.values(calendarData).flat().length}회
+              </div>
+            </div>
+            <button onClick={nextMonth} style={{ width: 36, height: 36, border: `1px solid ${theme.border}`, borderRadius: 8, background: theme.card, cursor: 'pointer', fontSize: 18, color: theme.text, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
           </div>
 
           {/* 요일 헤더 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6, background: theme.card, borderRadius: 10, padding: '8px 0', border: `1px solid ${theme.border}` }}>
             {DAYS.map((d, i) => (
               <div key={d} style={{
-                textAlign: 'center', fontSize: 12, fontWeight: 600, padding: '4px 0',
+                textAlign: 'center', fontSize: 12, fontWeight: 700,
                 color: i === 0 ? '#EF4444' : i === 6 ? '#3B82F6' : theme.subText,
               }}>{d}</div>
             ))}
           </div>
 
           {/* 날짜 그리드 */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4 }}>
             {cells.map((d, idx) => {
               const key = d ? dateKey(d) : null;
               const outfits = key ? (calendarData[key] || []) : [];
               const isSelected = d === selectedDate;
               const isToday = key === todayKey;
+              const isHovered = d === hoveredDate;
               const isSun = idx % 7 === 0;
               const isSat = idx % 7 === 6;
-              const thumb = outfits[0]?.top?.image_url || outfits[0]?.outer?.image_url || outfits[0]?.bottom?.image_url;
+              const hasOutfit = outfits.length > 0;
+              const thumb = getThumb(outfits);
+              const miniThumbs = getMiniThumbs(outfits);
 
               return (
                 <div
                   key={idx}
                   onClick={() => handleDayClick(d)}
+                  onMouseEnter={() => d && setHoveredDate(d)}
+                  onMouseLeave={() => setHoveredDate(null)}
                   style={{
-                    minHeight: 68, border: `1.5px solid ${isSelected ? theme.primary : theme.border}`,
-                    borderRadius: 8, padding: '4px 6px', cursor: d ? 'pointer' : 'default',
-                    background: isSelected ? theme.primary + '18' : theme.card,
-                    boxSizing: 'border-box', transition: 'border-color 0.15s',
+                    minHeight: 84,
+                    border: `1.5px solid ${isSelected ? theme.primary : isToday ? theme.accent : theme.border}`,
+                    borderRadius: 10,
+                    padding: '6px',
+                    cursor: d ? 'pointer' : 'default',
+                    background: isSelected
+                      ? theme.primary + '15'
+                      : isHovered && d
+                        ? theme.primary + '08'
+                        : theme.card,
+                    boxSizing: 'border-box',
+                    transition: 'all 0.15s',
+                    position: 'relative',
+                    overflow: 'hidden',
                   }}
                 >
                   {d && (
                     <>
-                      <div style={{
-                        fontSize: 12, fontWeight: isToday ? 700 : 400, marginBottom: 3,
-                        color: isToday ? theme.primary : isSun ? '#EF4444' : isSat ? '#3B82F6' : theme.text,
-                        background: isToday ? theme.primary + '22' : 'transparent',
-                        borderRadius: 10, display: 'inline-block', padding: isToday ? '1px 5px' : '0',
-                      }}>{d}</div>
-                      {thumb
-                        ? <img src={thumb} alt="" style={{ width: '100%', height: 38, objectFit: 'cover', borderRadius: 5 }} />
-                        : outfits.length > 0 && (
-                          <div style={{ width: '100%', height: 38, background: theme.primary + '28', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: theme.primary, fontWeight: 600 }}>착용</div>
+                      {/* 날짜 숫자 */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 12, fontWeight: isToday ? 700 : 400,
+                          background: isToday ? theme.primary : 'transparent',
+                          color: isToday ? '#fff' : isSun ? '#EF4444' : isSat ? '#3B82F6' : theme.text,
+                        }}>{d}</div>
+                        {/* 착용 횟수 뱃지 */}
+                        {outfits.length > 1 && (
+                          <div style={{
+                            fontSize: 10, fontWeight: 700, color: theme.primary,
+                            background: theme.primary + '20', borderRadius: 6,
+                            padding: '1px 5px',
+                          }}>{outfits.length}</div>
+                        )}
+                      </div>
+
+                      {/* 썸네일 표시 */}
+                      {hasOutfit && (
+                        miniThumbs.length > 1 ? (
+                          // 여러 이미지: 2x2 그리드
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginTop: 2 }}>
+                            {miniThumbs.slice(0, 4).map((url, i) => (
+                              <img key={i} src={url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 4 }} />
+                            ))}
+                          </div>
+                        ) : thumb ? (
+                          // 단일 이미지
+                          <img src={thumb} alt="" style={{ width: '100%', height: 44, objectFit: 'cover', borderRadius: 6, marginTop: 2 }} />
+                        ) : (
+                          // 이미지 없음 - 컬러 바
+                          <div style={{
+                            width: '100%', height: 6, borderRadius: 4, marginTop: 6,
+                            background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent})`,
+                          }} />
                         )
-                      }
+                      )}
                     </>
                   )}
                 </div>
               );
             })}
           </div>
+
+          {/* 범례 */}
+          <div style={{ display: 'flex', gap: 16, marginTop: 16, fontSize: 11, color: theme.subText }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 16, height: 16, borderRadius: '50%', background: theme.primary }} />
+              오늘
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 20, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent})` }} />
+              착용 기록
+            </div>
+          </div>
         </div>
 
         {/* 사이드 패널 */}
         {selectedDate && (
-          <div style={{ width: 230, flexShrink: 0 }}>
-            <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: 20 }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700 }}>
-                {month}월 {selectedDate}일
-              </h3>
-
-              {selectedOutfits.length === 0 ? (
-                <div style={{ fontSize: 13, color: theme.subText, marginBottom: 16 }}>기록된 코디 없음</div>
-              ) : (
-                selectedOutfits.map((o, oi) => (
-                  <div key={o.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: oi < selectedOutfits.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
-                    {(o.items || []).map((item) => (
-                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        {item.image_url
-                          ? <img src={item.image_url} alt={item.category} style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-                          : <div style={{ width: 38, height: 38, background: theme.bg, borderRadius: 6, flexShrink: 0 }} />
-                        }
-                        <div>
-                          <div style={{ fontSize: 11, color: theme.subText }}>{item.category}</div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{item.sub_category || item.category}</div>
-                        </div>
-                      </div>
-                    ))}
-                    {o.temperature != null && (
-                      <div style={{ fontSize: 11, color: theme.subText, marginTop: 2 }}>{o.temperature}°C · {o.weather}</div>
-                    )}
-                  </div>
-                ))
-              )}
-
-              {!showAddModal && (
-                <button onClick={handleOpenAdd}
-                  style={{ width: '100%', padding: '9px 0', border: 'none', borderRadius: 8, cursor: 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 13, fontWeight: 600 }}>
-                  + 코디 추가
-                </button>
-              )}
-
-              {showAddModal && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ fontSize: 12, color: theme.subText, fontWeight: 600, marginBottom: 4 }}>
-                    착용한 옷 선택 <span style={{ fontWeight: 400 }}>({selectedItems.length}개 선택)</span>
-                  </div>
-                  <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {['상의', '하의', '아우터', '신발', '가방', '기타'].map(cat => {
-                      const catItems = byCategory(cat);
-                      if (catItems.length === 0) return null;
-                      return (
-                        <div key={cat}>
-                          <div style={{ fontSize: 11, color: theme.primary, fontWeight: 700, marginBottom: 4 }}>{cat}</div>
-                          {catItems.map(c => (
-                            <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer' }}>
-                              <input
-                                type="checkbox"
-                                checked={selectedItems.includes(c.id)}
-                                onChange={() => toggleItem(c.id)}
-                                style={{ accentColor: theme.primary, width: 14, height: 14 }}
-                              />
-                              {c.image_url && <img src={c.image_url} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />}
-                              <span style={{ fontSize: 12, color: theme.text }}>
-                                {c.sub_category || c.category}{c.color ? ` · ${c.color}` : ''}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                    <button onClick={handleAddOutfit} disabled={selectedItems.length === 0}
-                      style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 8, cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 12, fontWeight: 600, opacity: selectedItems.length === 0 ? 0.5 : 1 }}>
-                      저장
-                    </button>
-                    <button onClick={() => setShowAddModal(false)}
-                      style={{ flex: 1, padding: '8px 0', border: `1px solid ${theme.border}`, borderRadius: 8, cursor: 'pointer', background: 'transparent', color: theme.text, fontSize: 12 }}>
-                      취소
-                    </button>
-                  </div>
+          <div style={{ width: 240, flexShrink: 0 }}>
+            <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 16, overflow: 'hidden' }}>
+              {/* 패널 헤더 */}
+              <div style={{ padding: '16px 20px', background: theme.primary, color: '#fff' }}>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{month}월 {selectedDate}일</div>
+                <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
+                  {selectedOutfits.length > 0 ? `${selectedOutfits.length}개 코디 기록` : '기록 없음'}
                 </div>
-              )}
+              </div>
+
+              <div style={{ padding: 16 }}>
+                {selectedOutfits.length === 0 ? (
+                  <div style={{ fontSize: 13, color: theme.subText, marginBottom: 16, textAlign: 'center', padding: '12px 0' }}>
+                    아직 코디 기록이 없어요
+                  </div>
+                ) : (
+                  selectedOutfits.map((o, oi) => (
+                    <div key={o.id} style={{
+                      marginBottom: 12, paddingBottom: 12,
+                      borderBottom: oi < selectedOutfits.length - 1 ? `1px solid ${theme.border}` : 'none',
+                    }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                        {(o.items || []).map((item) => (
+                          <div key={item.id} style={{ position: 'relative' }}>
+                            {item.image_url
+                              ? <img src={item.image_url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8 }} />
+                              : <div style={{ width: '100%', aspectRatio: '1', background: theme.bg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <span style={{ fontSize: 10, color: theme.subText }}>{item.category}</span>
+                                </div>
+                            }
+                            <div style={{
+                              position: 'absolute', bottom: 2, left: 2, right: 2,
+                              background: 'rgba(0,0,0,0.5)', borderRadius: 4,
+                              fontSize: 9, color: '#fff', textAlign: 'center', padding: '1px 2px',
+                            }}>
+                              {item.sub_category || item.category}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {o.temperature != null && (
+                        <div style={{ fontSize: 11, color: theme.subText }}>{o.temperature}°C · {o.weather}</div>
+                      )}
+                    </div>
+                  ))
+                )}
+
+                {!showAddModal && (
+                  <button onClick={handleOpenAdd}
+                    style={{ width: '100%', padding: '10px 0', border: 'none', borderRadius: 10, cursor: 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 13, fontWeight: 600 }}>
+                    + 코디 추가
+                  </button>
+                )}
+
+                {showAddModal && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, marginBottom: 4 }}>
+                      착용한 옷 선택
+                      <span style={{ fontWeight: 400, color: theme.subText }}> ({selectedItems.length}개)</span>
+                    </div>
+                    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {['상의', '하의', '아우터', '신발', '가방', '기타'].map(cat => {
+                        const catItems = byCategory(cat);
+                        if (catItems.length === 0) return null;
+                        return (
+                          <div key={cat}>
+                            <div style={{ fontSize: 11, color: theme.primary, fontWeight: 700, marginBottom: 4 }}>{cat}</div>
+                            {catItems.map(c => {
+                              const isDisabled = alreadyWornIds.has(c.id);
+                              return (
+                                <label key={c.id}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedItems.includes(c.id)}
+                                    onChange={() => toggleItem(c.id, isDisabled)}
+                                    disabled={isDisabled}
+                                    style={{ accentColor: theme.primary, width: 14, height: 14 }}
+                                  />
+                                  {c.image_url && <img src={c.image_url} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />}
+                                  <span style={{ fontSize: 12, color: theme.text }}>
+                                    {c.sub_category || c.category}{c.color ? ` · ${c.color}` : ''}
+                                    {isDisabled && <span style={{ fontSize: 10, color: theme.subText }}> (착용됨)</span>}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      <button onClick={handleAddOutfit} disabled={selectedItems.length === 0}
+                        style={{ flex: 1, padding: '9px 0', border: 'none', borderRadius: 8, cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 12, fontWeight: 600, opacity: selectedItems.length === 0 ? 0.5 : 1 }}>
+                        저장
+                      </button>
+                      <button onClick={() => setShowAddModal(false)}
+                        style={{ flex: 1, padding: '9px 0', border: `1px solid ${theme.border}`, borderRadius: 8, cursor: 'pointer', background: 'transparent', color: theme.text, fontSize: 12 }}>
+                        취소
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

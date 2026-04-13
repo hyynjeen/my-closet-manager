@@ -81,6 +81,7 @@ def recommend():
         'outer': random.choice(by_category['아우터']).to_dict() if '아우터' in by_category else None,
         'shoes': random.choice(by_category['신발']).to_dict() if '신발' in by_category else None,
         'bag': random.choice(by_category['가방']).to_dict() if '가방' in by_category else None,
+        'accessory': random.choice(by_category['기타']).to_dict() if '기타' in by_category else None,
     }
 
     user = User.query.get(user_id)

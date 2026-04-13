@@ -63,6 +63,7 @@ export default function Outfit() {
     { label: '하의', item: outfit.bottom },
     { label: '신발', item: outfit.shoes },
     { label: '가방', item: outfit.bag },
+    { label: '악세서리', item: outfit.accessory },
   ].filter((e) => e.item);
 
   const btnPrimary = {
