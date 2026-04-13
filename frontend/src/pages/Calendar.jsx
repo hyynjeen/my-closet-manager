@@ -74,9 +74,9 @@ export default function Calendar() {
   };
 
   const handleOpenAdd = async () => {
-    await loadClothes();
     setSelectedItems([]);
     setShowAddModal(true);
+    await loadClothes();
   };
 
   const toggleItem = (id) => {
