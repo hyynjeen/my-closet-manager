@@ -57,8 +57,7 @@ export default function Login() {
 
         {/* 로고 */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>👔</div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: theme.primary }}>My Closet</h1>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: theme.primary }}>My Closet Manager</h1>
           <p style={{ margin: '6px 0 0', fontSize: 13, color: theme.subText }}>나만의 스마트 옷장</p>
         </div>
 
