@@ -148,6 +148,28 @@ def save_outfit():
     return jsonify(outfit.to_dict()), 201
 
 
+@outfit_bp.route('/<int:outfit_id>', methods=['PUT'])
+@jwt_required()
+def update_outfit(outfit_id):
+    user_id = int(get_jwt_identity())
+    outfit = Outfit.query.filter_by(id=outfit_id, user_id=user_id).first_or_404()
+    data = request.get_json()
+    item_ids = data.get('item_ids', [])
+
+    for oi in list(outfit.outfit_items):
+        db.session.delete(oi)
+
+    now = datetime.now(timezone.utc)
+    for item_id in item_ids:
+        db.session.add(OutfitItem(outfit_id=outfit_id, item_id=item_id))
+        item = ClothingItem.query.get(item_id)
+        if item:
+            item.last_worn_at = now
+
+    db.session.commit()
+    return jsonify(outfit.to_dict())
+
+
 @outfit_bp.route('/saved', methods=['GET'])
 @jwt_required()
 def saved_outfits():

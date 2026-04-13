@@ -32,6 +32,8 @@ export default function Calendar() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
+  const [editingOutfitId, setEditingOutfitId] = useState(null);
+  const [editingItems, setEditingItems] = useState([]);
 
   const load = async () => {
     const res = await authFetch(`/api/outfit/calendar?year=${year}&month=${month}`);
@@ -71,12 +73,15 @@ export default function Calendar() {
     if (!d) return;
     setSelectedDate(d);
     setShowAddModal(false);
+    setEditingOutfitId(null);
+    setEditingItems([]);
   };
 
   const handleOpenAdd = async () => {
     setSelectedItems([]);
+    setEditingOutfitId(null);
     setShowAddModal(true);
-    await loadClothes();
+    if (clothes.length === 0) await loadClothes();
   };
 
   const toggleItem = (id, disabled) => {
@@ -99,15 +104,39 @@ export default function Calendar() {
     }
   };
 
+  const handleStartEdit = async (outfit) => {
+    setEditingOutfitId(outfit.id);
+    setEditingItems((outfit.items || []).map(i => i.id));
+    setShowAddModal(false);
+    if (clothes.length === 0) await loadClothes();
+  };
+
+  const toggleEditItem = (id) => {
+    setEditingItems(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
+  const handleSaveEdit = async () => {
+    const res = await authFetch(`/api/outfit/${editingOutfitId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_ids: editingItems }),
+    });
+    if (res.ok) {
+      setEditingOutfitId(null);
+      setEditingItems([]);
+      load();
+    }
+  };
+
   const byCategory = (cat) => clothes.filter(c => c.category === cat);
   const selectedOutfits = selectedDate ? (calendarData[dateKey(selectedDate)] || []) : [];
 
-  // 이미 착용 기록된 옷 ID 목록
+  // 이미 착용 기록된 옷 ID 목록 (추가 시에만 사용)
   const alreadyWornIds = new Set(
     selectedOutfits.flatMap(o => (o.items || []).map(i => i.id))
   );
 
-  // 달력 셀의 썸네일: items 배열 우선, 없으면 legacy top/outer/bottom
+  // 달력 셀의 썸네일
   const getThumb = (outfits) => {
     if (!outfits.length) return null;
     const o = outfits[0];
@@ -122,6 +151,40 @@ export default function Calendar() {
     );
     return items.slice(0, 4).map(i => i.image_url).filter(Boolean);
   };
+
+  const clothesCheckboxUI = (checkedIds, onToggle, disabledIds = new Set()) => (
+    <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {['상의', '하의', '아우터', '신발', '가방', '기타'].map(cat => {
+        const catItems = byCategory(cat);
+        if (catItems.length === 0) return null;
+        return (
+          <div key={cat}>
+            <div style={{ fontSize: 11, color: theme.primary, fontWeight: 700, marginBottom: 4 }}>{cat}</div>
+            {catItems.map(c => {
+              const isDisabled = disabledIds.has(c.id);
+              return (
+                <label key={c.id}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1 }}>
+                  <input
+                    type="checkbox"
+                    checked={checkedIds.includes(c.id)}
+                    onChange={() => onToggle(c.id, isDisabled)}
+                    disabled={isDisabled}
+                    style={{ accentColor: theme.primary, width: 14, height: 14 }}
+                  />
+                  {c.image_url && <img src={c.image_url} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />}
+                  <span style={{ fontSize: 12, color: theme.text }}>
+                    {c.sub_category || c.category}{c.color ? ` · ${c.color}` : ''}
+                    {isDisabled && <span style={{ fontSize: 10, color: theme.subText }}> (착용됨)</span>}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div style={{ minHeight: '100vh', background: theme.bg, color: theme.text }}>
@@ -192,7 +255,6 @@ export default function Calendar() {
                 >
                   {d && (
                     <>
-                      {/* 날짜 숫자 */}
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
                         <div style={{
                           width: 22, height: 22, borderRadius: '50%',
@@ -201,7 +263,6 @@ export default function Calendar() {
                           background: isToday ? theme.primary : 'transparent',
                           color: isToday ? '#fff' : isSun ? '#EF4444' : isSat ? '#3B82F6' : theme.text,
                         }}>{d}</div>
-                        {/* 착용 횟수 뱃지 */}
                         {outfits.length > 1 && (
                           <div style={{
                             fontSize: 10, fontWeight: 700, color: theme.primary,
@@ -211,20 +272,16 @@ export default function Calendar() {
                         )}
                       </div>
 
-                      {/* 썸네일 표시 */}
                       {hasOutfit && (
                         miniThumbs.length > 1 ? (
-                          // 여러 이미지: 2x2 그리드
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginTop: 2 }}>
                             {miniThumbs.slice(0, 4).map((url, i) => (
                               <img key={i} src={url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 4 }} />
                             ))}
                           </div>
                         ) : thumb ? (
-                          // 단일 이미지
                           <img src={thumb} alt="" style={{ width: '100%', height: 44, objectFit: 'cover', borderRadius: 6, marginTop: 2 }} />
                         ) : (
-                          // 이미지 없음 - 컬러 바
                           <div style={{
                             width: '100%', height: 6, borderRadius: 4, marginTop: 6,
                             background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent})`,
@@ -274,33 +331,68 @@ export default function Calendar() {
                       marginBottom: 12, paddingBottom: 12,
                       borderBottom: oi < selectedOutfits.length - 1 ? `1px solid ${theme.border}` : 'none',
                     }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
-                        {(o.items || []).map((item) => (
-                          <div key={item.id} style={{ position: 'relative' }}>
-                            {item.image_url
-                              ? <img src={item.image_url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8 }} />
-                              : <div style={{ width: '100%', aspectRatio: '1', background: theme.bg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <span style={{ fontSize: 10, color: theme.subText }}>{item.category}</span>
-                                </div>
-                            }
-                            <div style={{
-                              position: 'absolute', bottom: 2, left: 2, right: 2,
-                              background: 'rgba(0,0,0,0.5)', borderRadius: 4,
-                              fontSize: 9, color: '#fff', textAlign: 'center', padding: '1px 2px',
-                            }}>
-                              {item.sub_category || item.category}
-                            </div>
+                      {editingOutfitId === o.id ? (
+                        /* 수정 모드 */
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: theme.primary, marginBottom: 8 }}>
+                            착용 코디 수정
+                            <span style={{ fontWeight: 400, color: theme.subText }}> ({editingItems.length}개)</span>
                           </div>
-                        ))}
-                      </div>
-                      {o.temperature != null && (
-                        <div style={{ fontSize: 11, color: theme.subText }}>{o.temperature}°C · {o.weather}</div>
+                          {clothesCheckboxUI(editingItems, (id) => toggleEditItem(id))}
+                          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                            <button
+                              onClick={handleSaveEdit}
+                              disabled={editingItems.length === 0}
+                              style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 8, cursor: editingItems.length === 0 ? 'not-allowed' : 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 12, fontWeight: 600, opacity: editingItems.length === 0 ? 0.5 : 1 }}
+                            >
+                              저장
+                            </button>
+                            <button
+                              onClick={() => { setEditingOutfitId(null); setEditingItems([]); }}
+                              style={{ flex: 1, padding: '8px 0', border: `1px solid ${theme.border}`, borderRadius: 8, cursor: 'pointer', background: 'transparent', color: theme.text, fontSize: 12 }}
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* 일반 보기 */
+                        <div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+                            {(o.items || []).map((item) => (
+                              <div key={item.id} style={{ position: 'relative' }}>
+                                {item.image_url
+                                  ? <img src={item.image_url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 8 }} />
+                                  : <div style={{ width: '100%', aspectRatio: '1', background: theme.bg, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <span style={{ fontSize: 10, color: theme.subText }}>{item.category}</span>
+                                    </div>
+                                }
+                                <div style={{
+                                  position: 'absolute', bottom: 2, left: 2, right: 2,
+                                  background: 'rgba(0,0,0,0.5)', borderRadius: 4,
+                                  fontSize: 9, color: '#fff', textAlign: 'center', padding: '1px 2px',
+                                }}>
+                                  {item.sub_category || item.category}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {o.temperature != null && (
+                            <div style={{ fontSize: 11, color: theme.subText, marginBottom: 4 }}>{o.temperature}°C · {o.weather}</div>
+                          )}
+                          <button
+                            onClick={() => handleStartEdit(o)}
+                            style={{ padding: '4px 12px', border: `1px solid ${theme.border}`, borderRadius: 6, background: 'transparent', color: theme.subText, fontSize: 11, cursor: 'pointer' }}
+                          >
+                            수정
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))
                 )}
 
-                {!showAddModal && (
+                {!showAddModal && !editingOutfitId && (
                   <button onClick={handleOpenAdd}
                     style={{ width: '100%', padding: '10px 0', border: 'none', borderRadius: 10, cursor: 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 13, fontWeight: 600 }}>
                     + 코디 추가
@@ -313,37 +405,7 @@ export default function Calendar() {
                       착용한 옷 선택
                       <span style={{ fontWeight: 400, color: theme.subText }}> ({selectedItems.length}개)</span>
                     </div>
-                    <div style={{ maxHeight: 240, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {['상의', '하의', '아우터', '신발', '가방', '기타'].map(cat => {
-                        const catItems = byCategory(cat);
-                        if (catItems.length === 0) return null;
-                        return (
-                          <div key={cat}>
-                            <div style={{ fontSize: 11, color: theme.primary, fontWeight: 700, marginBottom: 4 }}>{cat}</div>
-                            {catItems.map(c => {
-                              const isDisabled = alreadyWornIds.has(c.id);
-                              return (
-                                <label key={c.id}
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: isDisabled ? 'not-allowed' : 'pointer', opacity: isDisabled ? 0.4 : 1 }}>
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedItems.includes(c.id)}
-                                    onChange={() => toggleItem(c.id, isDisabled)}
-                                    disabled={isDisabled}
-                                    style={{ accentColor: theme.primary, width: 14, height: 14 }}
-                                  />
-                                  {c.image_url && <img src={c.image_url} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />}
-                                  <span style={{ fontSize: 12, color: theme.text }}>
-                                    {c.sub_category || c.category}{c.color ? ` · ${c.color}` : ''}
-                                    {isDisabled && <span style={{ fontSize: 10, color: theme.subText }}> (착용됨)</span>}
-                                  </span>
-                                </label>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
+                    {clothesCheckboxUI(selectedItems, toggleItem, alreadyWornIds)}
                     <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
                       <button onClick={handleAddOutfit} disabled={selectedItems.length === 0}
                         style={{ flex: 1, padding: '9px 0', border: 'none', borderRadius: 8, cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 12, fontWeight: 600, opacity: selectedItems.length === 0 ? 0.5 : 1 }}>
