@@ -64,6 +64,7 @@ class Outfit(db.Model):
     shoes_id = db.Column(db.Integer, db.ForeignKey('clothes.id'), nullable=True)
     weather = db.Column(db.String(50))
     temperature = db.Column(db.Integer)
+    worn_date = db.Column(db.Date, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     top = db.relationship('ClothingItem', foreign_keys=[top_id])
@@ -81,5 +82,6 @@ class Outfit(db.Model):
             'shoes': self.shoes.to_dict() if self.shoes else None,
             'weather': self.weather,
             'temperature': self.temperature,
+            'worn_date': self.worn_date.isoformat() if self.worn_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }

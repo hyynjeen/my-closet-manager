@@ -28,17 +28,20 @@ my-closet-manager/
 │   ├── .env.example          (환경변수 예시)
 │   ├── routes/
 │   │   ├── auth.py           (로그인/회원가입)
-│   │   ├── clothes.py        (의류 CRUD)
-│   │   └── outfit.py         (코디 추천)
+│   │   ├── clothes.py        (의류 CRUD + Cloudinary)
+│   │   └── outfit.py         (코디 추천/저장/통계)
 │   └── requirements.txt
 │
 ├── frontend/
 │   ├── .env                  (REACT_APP_API_URL - gitignore 처리됨)
 │   ├── src/
+│   │   ├── themes.js         (4가지 테마 색상 정의)
+│   │   ├── ThemeContext.jsx  (테마 전역 상태 관리)
 │   │   ├── pages/
 │   │   │   ├── Login.jsx
 │   │   │   ├── Wardrobe.jsx
-│   │   │   └── Outfit.jsx
+│   │   │   ├── Outfit.jsx
+│   │   │   └── Calendar.jsx  (구현 예정)
 │   │   └── App.jsx
 │   └── package.json
 │
@@ -50,65 +53,80 @@ my-closet-manager/
 ## 구현 완료 상태
 
 ### Backend
-- **app.py**: Flask 앱 팩토리 패턴, `DATABASE_URL` 환경변수 사용 (SQLite fallback), JWT 시크릿 환경변수, API prefix `/api/auth` `/api/clothes` `/api/outfit`, `postgres://` → `postgresql://` 자동 변환 적용
-- **models.py**: User(email/password/nickname), ClothingItem(category/sub_category/color/season/style/image_url), Outfit(top_id/bottom_id/outer_id/shoes_id/weather/temperature) 모두 구현
-- **routes/auth.py**: flask-bcrypt로 비밀번호 해싱, email 기반 회원가입/로그인, JWT 토큰 발급
-- **routes/clothes.py**: CRUD + Cloudinary 이미지 업로드 구현
-- **routes/outfit.py**: OpenWeatherMap 날씨 연동, 계절별 코디 추천, outfit 저장/조회 API 구현
+- **app.py**: Flask 앱 팩토리 패턴, `DATABASE_URL` 환경변수 (SQLite fallback), JWT 환경변수, API prefix `/api/auth` `/api/clothes` `/api/outfit`, `postgres://` → `postgresql://` 자동 변환
+- **models.py**:
+  - `User`: email / password(bcrypt) / nickname
+  - `ClothingItem`: category / sub_category / color / season(복수, 쉼표구분) / style / material / image_url / created_at / last_worn_at
+  - `Outfit`: top_id / bottom_id / outer_id / shoes_id / weather / temperature / worn_date(추가 예정) / created_at
+- **routes/auth.py**: flask-bcrypt 비밀번호 해싱, email 기반 회원가입/로그인, JWT 발급
+- **routes/clothes.py**: CRUD + Cloudinary 이미지 업로드
+- **routes/outfit.py**: OpenWeatherMap 날씨 연동, 계절별 코디 추천, outfit 저장 시 last_worn_at 업데이트, 월간 통계 API (`/stats`)
 
 ### Frontend
-- **App.jsx**: React Router, PrivateRoute 구현
-- **Login.jsx**: email/password 로그인 + 회원가입 (닉네임 포함)
-- **Wardrobe.jsx**: 옷 목록, CRUD 폼
-- **Outfit.jsx**: 코디 추천, 결과 표시
+- **themes.js**: 기본 / 원목 / 다크 / 빈티지 4가지 테마
+- **ThemeContext.jsx**: 테마 전역 관리, localStorage 유지
+- **Login.jsx**: 로그인/회원가입 탭, 테마 선택 UI
+- **Wardrobe.jsx**: 옷 목록(카드 그리드), CRUD 모달, 카테고리 탭, 계절 복수 선택, 소재 입력, 등록일/착용일 표시, 월간 통계 카드, 네비게이션 + 테마 선택
+- **Outfit.jsx**: 날씨 카드, 코디 추천/저장, 네비게이션 + 테마 선택
+
+---
+
+## DB 컬럼 변경 이력 (psql로 직접 적용)
+
+```sql
+ALTER TABLE clothes ADD COLUMN material VARCHAR(50);
+ALTER TABLE clothes ALTER COLUMN season TYPE VARCHAR(100);
+ALTER TABLE clothes ADD COLUMN last_worn_at TIMESTAMP;
+-- 아래는 달력 기능 구현 시 추가 예정
+ALTER TABLE outfits ADD COLUMN worn_date DATE;
+```
 
 ---
 
 ## 환경변수
 
-### backend/.env (로컬용 - External DB URL 사용)
+### backend/.env (로컬용 - External DB URL)
 ```
-DATABASE_URL=postgresql://...  ← Render External URL
+DATABASE_URL=postgresql://...
 JWT_SECRET_KEY=...
-CLOUDINARY_CLOUD_NAME=
-CLOUDINARY_API_KEY=
-CLOUDINARY_API_SECRET=
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
 OPENWEATHER_API_KEY=...
 ```
 
-### Render 환경변수 (배포용 - Internal DB URL 사용)
-- `DATABASE_URL` = Internal Database URL (Render 내부 통신용)
+### Render 환경변수 (배포용 - Internal DB URL)
+- `DATABASE_URL` = Internal Database URL
 - `JWT_SECRET_KEY`
+- `CLOUDINARY_CLOUD_NAME` / `CLOUDINARY_API_KEY` / `CLOUDINARY_API_SECRET`
 - `OPENWEATHER_API_KEY`
-
-### frontend/.env (로컬용)
-```
-REACT_APP_API_URL=https://my-closet-backend.onrender.com
-```
 
 ### Vercel 환경변수
 - `REACT_APP_API_URL` = `https://my-closet-backend.onrender.com`
 
 ---
 
-## DB 접속 방법 (데이터 확인)
+## DB 접속 방법
 
 ```bash
 psql "postgresql://my_closet_db_user:...@dpg-d7bl6gc50q8c73fbak40-a.oregon-postgres.render.com/my_closet_db"
 ```
 
-접속 후:
 ```sql
 SELECT id, email, nickname, password FROM users;
 ```
 
-비밀번호는 `$2b$12$...` 형태로 bcrypt 암호화되어 저장됨.
+비밀번호는 `$2b$12$...` 형태로 bcrypt 암호화 저장됨.
 
 ---
 
-## 미구현 사항
+## 미구현 / 진행 예정
 
-없음 — 전체 기능 구현 완료
+| # | 항목 | 비고 |
+|---|------|------|
+| 1 | 달력 기반 착용 기록 | Calendar.jsx 신규, worn_date DB 추가 필요 |
+| 2 | UI 개선 | 현재 작업 중 |
+| 3 | AI 코디 추천 | Claude API 활용, 착용 기록 학습 (장기 과제) |
 
 ---
 
@@ -116,5 +134,5 @@ SELECT id, email, nickname, password FROM users;
 
 1. `https://my-closet-manager.vercel.app/login` 접속 → 클라우드 배포 확인
 2. 회원가입 → 로그인 → 로그인 기능 시연
-3. psql로 DB 접속 → `SELECT` 쿼리 → `$2b$12$...` 형태 비밀번호 확인 → bcrypt 암호화 적용 증명
+3. psql로 DB 접속 → `SELECT` 쿼리 → `$2b$12$...` 비밀번호 확인 → bcrypt 암호화 증명
 4. `backend/routes/auth.py` 24번째 줄 `bcrypt.generate_password_hash()` 코드 설명

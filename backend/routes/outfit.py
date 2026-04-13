@@ -1,9 +1,10 @@
 import os
 import random
 import requests
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import or_
 from app import db
 from models import ClothingItem, Outfit
 
@@ -86,6 +87,12 @@ def save_outfit():
     user_id = int(get_jwt_identity())
     data = request.get_json()
 
+    worn_date_str = data.get('worn_date')
+    if worn_date_str:
+        worn_date = date.fromisoformat(worn_date_str)
+    else:
+        worn_date = date.today()
+
     outfit = Outfit(
         user_id=user_id,
         top_id=data.get('top_id'),
@@ -94,6 +101,7 @@ def save_outfit():
         shoes_id=data.get('shoes_id'),
         weather=data.get('weather'),
         temperature=data.get('temperature'),
+        worn_date=worn_date,
     )
     db.session.add(outfit)
 
@@ -121,11 +129,15 @@ def saved_outfits():
 @jwt_required()
 def monthly_stats():
     user_id = int(get_jwt_identity())
-    since = datetime.now(timezone.utc) - timedelta(days=30)
+    since_date = date.today() - timedelta(days=90)
+    since_dt = datetime.now(timezone.utc) - timedelta(days=90)
 
     outfits = Outfit.query.filter(
         Outfit.user_id == user_id,
-        Outfit.created_at >= since,
+        or_(
+            Outfit.worn_date >= since_date,
+            db.and_(Outfit.worn_date.is_(None), Outfit.created_at >= since_dt),
+        )
     ).all()
 
     count = {}
@@ -136,9 +148,32 @@ def monthly_stats():
 
     all_items = ClothingItem.query.filter_by(user_id=user_id).all()
     worn_items = [{'item': i.to_dict(), 'count': count.get(i.id, 0)} for i in all_items]
-    worn_items.sort(key=lambda x: x['count'])
 
-    least = [x for x in worn_items if x['count'] == 0 or True][:3]
+    least = sorted(worn_items, key=lambda x: x['count'])[:3]
     most = sorted(worn_items, key=lambda x: x['count'], reverse=True)[:3]
 
     return jsonify({'most_worn': most, 'least_worn': least})
+
+
+@outfit_bp.route('/calendar', methods=['GET'])
+@jwt_required()
+def calendar_outfits():
+    user_id = int(get_jwt_identity())
+    year = int(request.args.get('year', date.today().year))
+    month = int(request.args.get('month', date.today().month))
+
+    start = date(year, month, 1)
+    end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+
+    outfits = Outfit.query.filter(
+        Outfit.user_id == user_id,
+        Outfit.worn_date >= start,
+        Outfit.worn_date < end,
+    ).all()
+
+    result = {}
+    for o in outfits:
+        key = o.worn_date.isoformat()
+        result.setdefault(key, []).append(o.to_dict())
+
+    return jsonify(result)

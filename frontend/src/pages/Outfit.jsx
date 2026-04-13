@@ -73,8 +73,7 @@ export default function Outfit() {
       {/* 네비게이션 */}
       <nav style={{ background: theme.navBg, padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>👔</span>
-          <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet</span>
+          <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet Manager</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* 테마 선택 */}
@@ -92,6 +91,7 @@ export default function Outfit() {
             ))}
           </div>
           <Link to="/wardrobe" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>내 옷장</Link>
+          <Link to="/calendar" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>착용 기록</Link>
         </div>
       </nav>
 
@@ -126,12 +126,12 @@ export default function Outfit() {
           )}
           {result && !saved && (
             <button onClick={saveOutfit} style={{ ...btnPrimary, background: '#10B981' }}>
-              이 코디 저장
+              ♥ 오늘 착용
             </button>
           )}
           {saved && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 14 }}>
-              ✓ 저장 완료
+              ✓ 오늘 착용 기록 완료
             </div>
           )}
         </div>

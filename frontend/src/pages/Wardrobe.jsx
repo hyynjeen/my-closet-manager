@@ -131,8 +131,7 @@ export default function Wardrobe() {
       {/* 네비게이션 */}
       <nav style={{ background: theme.navBg, padding: '0 32px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>👔</span>
-          <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet</span>
+          <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet Manager</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* 테마 선택 */}
@@ -150,6 +149,7 @@ export default function Wardrobe() {
             ))}
           </div>
           <Link to="/outfit" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>코디 추천</Link>
+          <Link to="/calendar" style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>착용 기록</Link>
           <button onClick={handleLogout} style={{ ...btnGhost, color: theme.navText, borderColor: 'rgba(255,255,255,0.3)', fontSize: 13 }}>로그아웃</button>
         </div>
       </nav>
@@ -160,7 +160,7 @@ export default function Wardrobe() {
         {stats && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
             <div style={{ background: theme.statA, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.primary, marginBottom: 10 }}>이번 달 많이 입은 옷 TOP 3</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: theme.primary, marginBottom: 10 }}>최근 3개월 많이 입은 옷 TOP 3</div>
               {stats.most_worn.filter(x => x.count > 0).length === 0
                 ? <div style={{ fontSize: 13, color: theme.subText }}>착용 기록 없음</div>
                 : stats.most_worn.filter(x => x.count > 0).map((x, i) => (
@@ -172,7 +172,7 @@ export default function Wardrobe() {
               }
             </div>
             <div style={{ background: theme.statB, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.secondary, marginBottom: 10 }}>이번 달 적게 입은 옷 TOP 3</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: theme.secondary, marginBottom: 10 }}>최근 3개월 적게 입은 옷 TOP 3</div>
               {stats.least_worn.length === 0
                 ? <div style={{ fontSize: 13, color: theme.subText }}>옷 없음</div>
                 : stats.least_worn.map((x, i) => (
