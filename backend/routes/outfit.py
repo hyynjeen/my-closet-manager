@@ -44,10 +44,12 @@ def get_weather(city='Seoul'):
         }, timeout=5)
         data = res.json()
         temp = round(data['main']['temp'])
+        temp_min = round(data['main']['temp_min'])
+        temp_max = round(data['main']['temp_max'])
         weather = data['weather'][0]['description']
-        return temp, weather, get_season_by_temp(temp)
+        return temp, temp_min, temp_max, weather, get_season_by_temp(temp)
     except Exception:
-        return None, None, None
+        return None, None, None, None, None
 
 
 @outfit_bp.route('/recommend', methods=['GET'])
@@ -56,7 +58,7 @@ def recommend():
     user_id = int(get_jwt_identity())
     city = request.args.get('city', 'Seoul')
 
-    temp, weather, season = get_weather(city)
+    temp, temp_min, temp_max, weather, season = get_weather(city)
 
     items = ClothingItem.query.filter_by(user_id=user_id).all()
     if not items:
@@ -78,6 +80,7 @@ def recommend():
         'bottom': random.choice(by_category['하의']).to_dict() if '하의' in by_category else None,
         'outer': random.choice(by_category['아우터']).to_dict() if '아우터' in by_category else None,
         'shoes': random.choice(by_category['신발']).to_dict() if '신발' in by_category else None,
+        'bag': random.choice(by_category['가방']).to_dict() if '가방' in by_category else None,
     }
 
     user = User.query.get(user_id)
@@ -86,8 +89,9 @@ def recommend():
     return jsonify({
         'outfit': outfit,
         'temperature': temp,
+        'temp_min': temp_min,
+        'temp_max': temp_max,
         'weather': weather,
-        'season': season,
         'personal_color': user.personal_color if user else None,
         'recommended_colors': recommended_colors,
     })

@@ -19,7 +19,7 @@ const authFetch = (path, options = {}) =>
     },
   });
 
-const CATEGORIES = ['상의', '하의', '아우터', '신발', '기타'];
+const CATEGORIES = ['상의', '하의', '아우터', '신발', '가방', '기타'];
 const SEASONS = ['봄', '여름', '가을', '겨울'];
 
 function getCurrentSeason() {

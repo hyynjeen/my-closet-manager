@@ -219,7 +219,7 @@ export default function Calendar() {
                     착용한 옷 선택 <span style={{ fontWeight: 400 }}>({selectedItems.length}개 선택)</span>
                   </div>
                   <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {['상의', '하의', '아우터', '신발', '기타'].map(cat => {
+                    {['상의', '하의', '아우터', '신발', '가방', '기타'].map(cat => {
                       const catItems = byCategory(cat);
                       if (catItems.length === 0) return null;
                       return (

@@ -21,6 +21,7 @@ const authFetch = (path, options = {}) =>
 export default function Outfit() {
   const { theme } = useTheme();
   const [result, setResult] = useState(null);
+  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,7 @@ export default function Outfit() {
     setLoading(true);
     setError('');
     setSaved(false);
+    setLiked(false);
     const res = await authFetch('/api/outfit/recommend');
     const data = await res.json();
     setLoading(false);
@@ -39,17 +41,17 @@ export default function Outfit() {
   const saveOutfit = async () => {
     if (!result) return;
     const { outfit, temperature, weather } = result;
+    const item_ids = [
+      outfit.top?.id,
+      outfit.bottom?.id,
+      outfit.outer?.id,
+      outfit.shoes?.id,
+      outfit.bag?.id,
+    ].filter(Boolean);
     const res = await authFetch('/api/outfit/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        top_id: outfit.top?.id || null,
-        bottom_id: outfit.bottom?.id || null,
-        outer_id: outfit.outer?.id || null,
-        shoes_id: outfit.shoes?.id || null,
-        temperature,
-        weather,
-      }),
+      body: JSON.stringify({ item_ids, temperature, weather }),
     });
     if (res.ok) setSaved(true);
   };
@@ -60,6 +62,7 @@ export default function Outfit() {
     { label: '상의', item: outfit.top },
     { label: '하의', item: outfit.bottom },
     { label: '신발', item: outfit.shoes },
+    { label: '가방', item: outfit.bag },
   ].filter((e) => e.item);
 
   const btnPrimary = {
@@ -82,38 +85,54 @@ export default function Outfit() {
 
         {/* 날씨 카드 */}
         {result?.temperature != null && (
-          <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px', marginBottom: 24, display: 'flex', gap: 24 }}>
+          <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px', marginBottom: 24, display: 'flex', gap: 24, flexWrap: 'wrap' }}>
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: theme.subText, marginBottom: 4 }}>기온</div>
+              <div style={{ fontSize: 11, color: theme.subText, marginBottom: 4 }}>현재 기온</div>
               <div style={{ fontSize: 22, fontWeight: 700, color: theme.primary }}>{result.temperature}°C</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: theme.subText, marginBottom: 4 }}>최고 / 최저</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>
+                {result.temp_max != null ? `${result.temp_max}°` : '-'} / {result.temp_min != null ? `${result.temp_min}°` : '-'}
+              </div>
             </div>
             <div style={{ textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: theme.subText, marginBottom: 4 }}>날씨</div>
               <div style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>{result.weather}</div>
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: theme.subText, marginBottom: 4 }}>계절</div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: theme.accent }}>{result.season}</div>
-            </div>
           </div>
         )}
 
         {/* 버튼 */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 28, flexWrap: 'wrap', alignItems: 'center' }}>
           <button onClick={recommend} disabled={loading} style={btnPrimary}>
             {loading ? '추천 중...' : '코디 추천받기'}
           </button>
-          {result && !saved && (
+          {result && (
             <button onClick={recommend} style={btnGhost}>다른 코디 보기</button>
+          )}
+          {result && (
+            <button
+              onClick={() => setLiked(l => !l)}
+              style={{
+                padding: '10px 20px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 600,
+                border: `1px solid #EF4444`,
+                background: liked ? '#EF4444' : 'transparent',
+                color: liked ? '#FFFFFF' : '#EF4444',
+                transition: 'all 0.2s',
+              }}
+            >
+              {liked ? '♥ 좋아요' : '♡ 좋아요'}
+            </button>
           )}
           {result && !saved && (
             <button onClick={saveOutfit} style={{ ...btnPrimary, background: '#10B981' }}>
-              ♥ 오늘 착용
+              오늘 착용
             </button>
           )}
           {saved && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#10B981', fontWeight: 600, fontSize: 14 }}>
-              ✓ 오늘 착용 기록 완료
+              ✓ 착용 기록 완료
             </div>
           )}
         </div>
