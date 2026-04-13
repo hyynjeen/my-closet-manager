@@ -328,10 +328,11 @@ export default function Wardrobe() {
                         onMouseEnter={() => d && setCalHoveredDate(d)}
                         onMouseLeave={() => setCalHoveredDate(null)}
                         style={{
-                          minHeight: 88,
+                          height: 96,
                           border: `1.5px solid ${isSelected ? theme.primary : isToday ? theme.accent : theme.border}`,
                           borderRadius: 10,
                           padding: '7px',
+                          overflow: 'hidden',
                           cursor: d ? 'pointer' : 'default',
                           background: isSelected ? theme.primary + '15' : isHovered && d ? theme.primary + '08' : theme.card,
                           boxSizing: 'border-box',

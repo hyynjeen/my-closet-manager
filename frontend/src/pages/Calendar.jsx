@@ -237,10 +237,11 @@ export default function Calendar() {
                   onMouseEnter={() => d && setHoveredDate(d)}
                   onMouseLeave={() => setHoveredDate(null)}
                   style={{
-                    minHeight: 84,
+                    height: 96,
                     border: `1.5px solid ${isSelected ? theme.primary : isToday ? theme.accent : theme.border}`,
                     borderRadius: 10,
                     padding: '6px',
+                    overflow: 'hidden',
                     cursor: d ? 'pointer' : 'default',
                     background: isSelected
                       ? theme.primary + '15'
