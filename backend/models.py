@@ -35,15 +35,15 @@ class ClothingItem(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    category = db.Column(db.String(50))        # 상의/하의/아우터/신발/기타
-    sub_category = db.Column(db.String(50))    # 티셔츠/셔츠/니트 등
+    category = db.Column(db.String(50))
+    sub_category = db.Column(db.String(50))
     color = db.Column(db.String(30))
-    season = db.Column(db.String(100))         # 봄,여름,가을,겨울 (복수 선택 가능)
+    season = db.Column(db.String(100))
     style = db.Column(db.String(50))
-    material = db.Column(db.String(50))        # 소재
-    image_url = db.Column(db.String(300))      # Cloudinary URL
+    material = db.Column(db.String(50))
+    image_url = db.Column(db.String(300))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    last_worn_at = db.Column(db.DateTime, nullable=True)  # 마지막 착용일
+    last_worn_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {
@@ -61,11 +61,23 @@ class ClothingItem(db.Model):
         }
 
 
+class OutfitItem(db.Model):
+    """코디 기록에 포함된 개별 옷 (다중 선택 지원)"""
+    __tablename__ = 'outfit_items'
+
+    id = db.Column(db.Integer, primary_key=True)
+    outfit_id = db.Column(db.Integer, db.ForeignKey('outfits.id', ondelete='CASCADE'), nullable=False)
+    item_id = db.Column(db.Integer, db.ForeignKey('clothes.id', ondelete='CASCADE'), nullable=False)
+
+    item = db.relationship('ClothingItem', foreign_keys=[item_id])
+
+
 class Outfit(db.Model):
     __tablename__ = 'outfits'
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    # 기존 단일 선택 컬럼 (하위 호환)
     top_id = db.Column(db.Integer, db.ForeignKey('clothes.id'), nullable=True)
     bottom_id = db.Column(db.Integer, db.ForeignKey('clothes.id'), nullable=True)
     outer_id = db.Column(db.Integer, db.ForeignKey('clothes.id'), nullable=True)
@@ -79,8 +91,15 @@ class Outfit(db.Model):
     bottom = db.relationship('ClothingItem', foreign_keys=[bottom_id])
     outer = db.relationship('ClothingItem', foreign_keys=[outer_id])
     shoes = db.relationship('ClothingItem', foreign_keys=[shoes_id])
+    outfit_items = db.relationship('OutfitItem', backref='outfit', lazy=True, cascade='all, delete-orphan')
 
     def to_dict(self):
+        # 신규: outfit_items 방식
+        new_items = [oi.item.to_dict() for oi in self.outfit_items if oi.item]
+        # 구형: top/bottom/outer/shoes 방식
+        legacy = [i.to_dict() for i in [self.top, self.bottom, self.outer, self.shoes] if i]
+        all_items = new_items if new_items else legacy
+
         return {
             'id': self.id,
             'user_id': self.user_id,
@@ -88,6 +107,7 @@ class Outfit(db.Model):
             'bottom': self.bottom.to_dict() if self.bottom else None,
             'outer': self.outer.to_dict() if self.outer else None,
             'shoes': self.shoes.to_dict() if self.shoes else None,
+            'items': all_items,
             'weather': self.weather,
             'temperature': self.temperature,
             'worn_date': self.worn_date.isoformat() if self.worn_date else None,

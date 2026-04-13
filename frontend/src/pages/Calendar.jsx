@@ -30,7 +30,7 @@ export default function Calendar() {
   const [selectedDate, setSelectedDate] = useState(null);
   const [clothes, setClothes] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ top_id: '', bottom_id: '', outer_id: '', shoes_id: '' });
+  const [selectedItems, setSelectedItems] = useState([]);
 
   const load = async () => {
     const res = await authFetch(`/api/outfit/calendar?year=${year}&month=${month}`);
@@ -75,15 +75,22 @@ export default function Calendar() {
 
   const handleOpenAdd = async () => {
     await loadClothes();
-    setAddForm({ top_id: '', bottom_id: '', outer_id: '', shoes_id: '' });
+    setSelectedItems([]);
     setShowAddModal(true);
   };
 
+  const toggleItem = (id) => {
+    setSelectedItems(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
   const handleAddOutfit = async () => {
+    if (selectedItems.length === 0) return;
     const res = await authFetch('/api/outfit/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...addForm, worn_date: dateKey(selectedDate) }),
+      body: JSON.stringify({ item_ids: selectedItems, worn_date: dateKey(selectedDate) }),
     });
     if (res.ok) {
       setShowAddModal(false);
@@ -94,11 +101,6 @@ export default function Calendar() {
   const byCategory = (cat) => clothes.filter(c => c.category === cat);
   const selectedOutfits = selectedDate ? (calendarData[dateKey(selectedDate)] || []) : [];
 
-  const selectStyle = {
-    width: '100%', padding: '8px 10px', border: `1px solid ${theme.border}`,
-    borderRadius: 8, fontSize: 13, background: theme.bg, color: theme.text,
-    boxSizing: 'border-box', outline: 'none',
-  };
 
   return (
     <div style={{ minHeight: '100vh', background: theme.bg, color: theme.text }}>
@@ -185,19 +187,14 @@ export default function Calendar() {
               ) : (
                 selectedOutfits.map((o, oi) => (
                   <div key={o.id} style={{ marginBottom: 14, paddingBottom: 14, borderBottom: oi < selectedOutfits.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
-                    {[
-                      { label: '아우터', item: o.outer },
-                      { label: '상의', item: o.top },
-                      { label: '하의', item: o.bottom },
-                      { label: '신발', item: o.shoes },
-                    ].filter(e => e.item).map(({ label, item }) => (
-                      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    {(o.items || []).map((item) => (
+                      <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                         {item.image_url
-                          ? <img src={item.image_url} alt={label} style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                          ? <img src={item.image_url} alt={item.category} style={{ width: 38, height: 38, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                           : <div style={{ width: 38, height: 38, background: theme.bg, borderRadius: 6, flexShrink: 0 }} />
                         }
                         <div>
-                          <div style={{ fontSize: 11, color: theme.subText }}>{label}</div>
+                          <div style={{ fontSize: 11, color: theme.subText }}>{item.category}</div>
                           <div style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{item.sub_category || item.category}</div>
                         </div>
                       </div>
@@ -217,28 +214,38 @@ export default function Calendar() {
               )}
 
               {showAddModal && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontSize: 12, color: theme.subText, fontWeight: 600, marginBottom: 2 }}>착용한 옷 선택</div>
-                  {[
-                    ['상의', 'top_id', '상의'],
-                    ['하의', 'bottom_id', '하의'],
-                    ['아우터', 'outer_id', '아우터'],
-                    ['신발', 'shoes_id', '신발'],
-                  ].map(([label, key, cat]) => (
-                    <select key={key} value={addForm[key]}
-                      onChange={e => setAddForm({ ...addForm, [key]: e.target.value })}
-                      style={selectStyle}>
-                      <option value="">{label} (선택)</option>
-                      {byCategory(cat).map(c => (
-                        <option key={c.id} value={c.id}>
-                          {c.sub_category || c.category}{c.color ? ` (${c.color})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  ))}
-                  <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    <button onClick={handleAddOutfit}
-                      style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 8, cursor: 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 12, fontWeight: 600 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 12, color: theme.subText, fontWeight: 600, marginBottom: 4 }}>
+                    착용한 옷 선택 <span style={{ fontWeight: 400 }}>({selectedItems.length}개 선택)</span>
+                  </div>
+                  <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {['상의', '하의', '아우터', '신발', '기타'].map(cat => {
+                      const catItems = byCategory(cat);
+                      if (catItems.length === 0) return null;
+                      return (
+                        <div key={cat}>
+                          <div style={{ fontSize: 11, color: theme.primary, fontWeight: 700, marginBottom: 4 }}>{cat}</div>
+                          {catItems.map(c => (
+                            <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={selectedItems.includes(c.id)}
+                                onChange={() => toggleItem(c.id)}
+                                style={{ accentColor: theme.primary, width: 14, height: 14 }}
+                              />
+                              {c.image_url && <img src={c.image_url} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />}
+                              <span style={{ fontSize: 12, color: theme.text }}>
+                                {c.sub_category || c.category}{c.color ? ` · ${c.color}` : ''}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                    <button onClick={handleAddOutfit} disabled={selectedItems.length === 0}
+                      style={{ flex: 1, padding: '8px 0', border: 'none', borderRadius: 8, cursor: selectedItems.length === 0 ? 'not-allowed' : 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 12, fontWeight: 600, opacity: selectedItems.length === 0 ? 0.5 : 1 }}>
                       저장
                     </button>
                     <button onClick={() => setShowAddModal(false)}

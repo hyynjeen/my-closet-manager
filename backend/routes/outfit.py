@@ -6,7 +6,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 from app import db
-from models import ClothingItem, Outfit, User
+from models import ClothingItem, Outfit, OutfitItem, User
 
 PERSONAL_COLOR_MAP = {
     '봄 웜': ['코랄', '복숭아', '황금색', '아이보리', '연두색', '카멜'],
@@ -100,30 +100,44 @@ def save_outfit():
     data = request.get_json()
 
     worn_date_str = data.get('worn_date')
-    if worn_date_str:
-        worn_date = date.fromisoformat(worn_date_str)
-    else:
-        worn_date = date.today()
-
-    outfit = Outfit(
-        user_id=user_id,
-        top_id=data.get('top_id'),
-        bottom_id=data.get('bottom_id'),
-        outer_id=data.get('outer_id'),
-        shoes_id=data.get('shoes_id'),
-        weather=data.get('weather'),
-        temperature=data.get('temperature'),
-        worn_date=worn_date,
-    )
-    db.session.add(outfit)
-
-    # 착용한 옷들의 last_worn_at 업데이트
+    worn_date = date.fromisoformat(worn_date_str) if worn_date_str else date.today()
     now = datetime.now(timezone.utc)
-    for item_id in [data.get('top_id'), data.get('bottom_id'), data.get('outer_id'), data.get('shoes_id')]:
-        if item_id:
+
+    item_ids = data.get('item_ids')  # 다중 선택 방식
+
+    if item_ids:
+        outfit = Outfit(
+            user_id=user_id,
+            weather=data.get('weather'),
+            temperature=data.get('temperature'),
+            worn_date=worn_date,
+        )
+        db.session.add(outfit)
+        db.session.flush()
+
+        for item_id in item_ids:
+            db.session.add(OutfitItem(outfit_id=outfit.id, item_id=item_id))
             item = ClothingItem.query.get(item_id)
             if item:
                 item.last_worn_at = now
+    else:
+        # 기존 단일 선택 방식 (코디 추천에서 저장 시)
+        outfit = Outfit(
+            user_id=user_id,
+            top_id=data.get('top_id'),
+            bottom_id=data.get('bottom_id'),
+            outer_id=data.get('outer_id'),
+            shoes_id=data.get('shoes_id'),
+            weather=data.get('weather'),
+            temperature=data.get('temperature'),
+            worn_date=worn_date,
+        )
+        db.session.add(outfit)
+        for item_id in [data.get('top_id'), data.get('bottom_id'), data.get('outer_id'), data.get('shoes_id')]:
+            if item_id:
+                item = ClothingItem.query.get(item_id)
+                if item:
+                    item.last_worn_at = now
 
     db.session.commit()
     return jsonify(outfit.to_dict()), 201
@@ -154,9 +168,14 @@ def monthly_stats():
 
     count = {}
     for o in outfits:
-        for item_id in [o.top_id, o.bottom_id, o.outer_id, o.shoes_id]:
-            if item_id:
-                count[item_id] = count.get(item_id, 0) + 1
+        # 신규 방식
+        for oi in o.outfit_items:
+            count[oi.item_id] = count.get(oi.item_id, 0) + 1
+        # 구형 방식
+        if not o.outfit_items:
+            for item_id in [o.top_id, o.bottom_id, o.outer_id, o.shoes_id]:
+                if item_id:
+                    count[item_id] = count.get(item_id, 0) + 1
 
     all_items = ClothingItem.query.filter_by(user_id=user_id).all()
     worn_items = [{'item': i.to_dict(), 'count': count.get(i.id, 0)} for i in all_items]

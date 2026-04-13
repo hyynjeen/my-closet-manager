@@ -22,6 +22,27 @@ const authFetch = (path, options = {}) =>
 const CATEGORIES = ['상의', '하의', '아우터', '신발', '기타'];
 const SEASONS = ['봄', '여름', '가을', '겨울'];
 
+function getCurrentSeason() {
+  const m = new Date().getMonth() + 1;
+  if (m >= 3 && m <= 5) return '봄';
+  if (m >= 6 && m <= 8) return '여름';
+  if (m >= 9 && m <= 11) return '가을';
+  return '겨울';
+}
+
+function getSeasonPriority(itemSeason) {
+  const cur = getCurrentSeason();
+  const order = [cur, ...SEASONS.filter(s => s !== cur)];
+  if (!itemSeason) return order.length;
+  const seasons = itemSeason.split(',').map(s => s.trim());
+  let best = order.length;
+  for (const s of seasons) {
+    const idx = order.indexOf(s);
+    if (idx !== -1 && idx < best) best = idx;
+  }
+  return best;
+}
+
 const emptyForm = { category: '', sub_category: '', color: '', seasons: [], style: '', material: '' };
 
 export default function Wardrobe() {
@@ -194,7 +215,7 @@ export default function Wardrobe() {
 
         {/* 의류 그리드 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
-          {clothes.map((item) => (
+          {[...clothes].sort((a, b) => getSeasonPriority(a.season) - getSeasonPriority(b.season)).map((item) => (
             <div key={item.id} style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, overflow: 'hidden' }}>
               {item.image_url
                 ? <img src={item.image_url} alt={item.category} style={{ width: '100%', height: 150, objectFit: 'cover' }} />
