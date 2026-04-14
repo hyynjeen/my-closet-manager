@@ -34,6 +34,8 @@ export default function Calendar() {
   const [hoveredDate, setHoveredDate] = useState(null);
   const [editingOutfitId, setEditingOutfitId] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
+  const [dailyPhotos, setDailyPhotos] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const load = async () => {
     const res = await authFetch(`/api/outfit/calendar?year=${year}&month=${month}`);
@@ -41,12 +43,33 @@ export default function Calendar() {
     setCalendarData(await res.json());
   };
 
+  const loadDailyPhotos = async (y = year, m = month) => {
+    const res = await authFetch(`/api/outfit/daily-photos?year=${y}&month=${m}`);
+    if (res.ok) setDailyPhotos(await res.json());
+  };
+
+  const handleDailyPhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !selectedDate) return;
+    setUploadingPhoto(true);
+    const fd = new FormData();
+    fd.append('date', dateKey(selectedDate));
+    fd.append('image', file);
+    const res = await authFetch('/api/outfit/daily-photo', { method: 'POST', body: fd });
+    setUploadingPhoto(false);
+    if (res.ok) {
+      const data = await res.json();
+      setDailyPhotos(prev => ({ ...prev, [data.date]: data.photo_url }));
+    }
+    e.target.value = '';
+  };
+
   const loadClothes = async () => {
     const res = await authFetch('/api/clothes/');
     if (res.ok) setClothes(await res.json());
   };
 
-  useEffect(() => { load(); }, [year, month]);
+  useEffect(() => { load(); loadDailyPhotos(); }, [year, month]);
 
   const prevMonth = () => {
     if (month === 1) { setYear(y => y - 1); setMonth(12); }
@@ -273,7 +296,9 @@ export default function Calendar() {
                         )}
                       </div>
 
-                      {hasOutfit && (
+                      {dailyPhotos[key] ? (
+                        <img src={dailyPhotos[key]} alt="" style={{ width: '100%', height: 44, objectFit: 'cover', borderRadius: 6, marginTop: 2 }} />
+                      ) : hasOutfit && (
                         miniThumbs.length > 1 ? (
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginTop: 2 }}>
                             {miniThumbs.slice(0, 4).map((url, i) => (
@@ -322,6 +347,17 @@ export default function Calendar() {
               </div>
 
               <div style={{ padding: 16 }}>
+                {/* 날짜 사진 업로드 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                  {dailyPhotos[dateKey(selectedDate)] && (
+                    <img src={dailyPhotos[dateKey(selectedDate)]} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 8, border: `1px solid ${theme.border}`, flexShrink: 0 }} />
+                  )}
+                  <label style={{ flex: 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, padding: '8px 10px', border: `1px dashed ${theme.primary}`, borderRadius: 8, fontSize: 11, color: theme.primary, fontWeight: 600 }}>
+                    {uploadingPhoto ? '업로드 중...' : dailyPhotos[dateKey(selectedDate)] ? '📷 사진 변경' : '📷 오늘 사진 추가'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleDailyPhotoUpload} disabled={uploadingPhoto} />
+                  </label>
+                </div>
+
                 {selectedOutfits.length === 0 ? (
                   <div style={{ fontSize: 13, color: theme.subText, marginBottom: 16, textAlign: 'center', padding: '12px 0' }}>
                     아직 코디 기록이 없어요

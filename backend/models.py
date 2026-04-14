@@ -72,6 +72,26 @@ class OutfitItem(db.Model):
     item = db.relationship('ClothingItem', foreign_keys=[item_id])
 
 
+class DailyPhoto(db.Model):
+    """날짜별 착용 사진 (유저가 직접 업로드)"""
+    __tablename__ = 'daily_photos'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    photo_url = db.Column(db.String(500), nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'date', name='uq_daily_photo_user_date'),)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'date': self.date.isoformat(),
+            'photo_url': self.photo_url,
+        }
+
+
 class Outfit(db.Model):
     __tablename__ = 'outfits'
 

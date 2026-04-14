@@ -1,12 +1,20 @@
 import os
 import random
 import requests
+import cloudinary
+import cloudinary.uploader
 from datetime import datetime, timezone, timedelta, date
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import or_
 from app import db
-from models import ClothingItem, Outfit, OutfitItem, User
+from models import ClothingItem, Outfit, OutfitItem, User, DailyPhoto
+
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+)
 
 PERSONAL_COLOR_MAP = {
     '봄 웜': ['코랄', '복숭아', '황금색', '아이보리', '연두색', '카멜'],
@@ -179,6 +187,44 @@ def delete_outfit(outfit_id):
     db.session.delete(outfit)
     db.session.commit()
     return jsonify({'message': 'deleted'}), 200
+
+
+@outfit_bp.route('/daily-photo', methods=['POST'])
+@jwt_required()
+def upload_daily_photo():
+    user_id = int(get_jwt_identity())
+    date_str = request.form.get('date')
+    if not date_str:
+        return jsonify({'error': '날짜가 필요합니다'}), 400
+    photo_date = date.fromisoformat(date_str)
+    image_file = request.files.get('image')
+    if not image_file:
+        return jsonify({'error': '이미지가 필요합니다'}), 400
+    result = cloudinary.uploader.upload(image_file, folder='daily_photos')
+    photo_url = result['secure_url']
+    existing = DailyPhoto.query.filter_by(user_id=user_id, date=photo_date).first()
+    if existing:
+        existing.photo_url = photo_url
+    else:
+        db.session.add(DailyPhoto(user_id=user_id, date=photo_date, photo_url=photo_url))
+    db.session.commit()
+    return jsonify({'date': date_str, 'photo_url': photo_url}), 200
+
+
+@outfit_bp.route('/daily-photos', methods=['GET'])
+@jwt_required()
+def get_daily_photos():
+    user_id = int(get_jwt_identity())
+    year = int(request.args.get('year', datetime.now().year))
+    month = int(request.args.get('month', datetime.now().month))
+    from_date = date(year, month, 1)
+    to_date = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+    photos = DailyPhoto.query.filter(
+        DailyPhoto.user_id == user_id,
+        DailyPhoto.date >= from_date,
+        DailyPhoto.date < to_date,
+    ).all()
+    return jsonify({p.date.isoformat(): p.photo_url for p in photos})
 
 
 @outfit_bp.route('/saved', methods=['GET'])

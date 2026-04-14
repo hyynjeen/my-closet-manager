@@ -78,6 +78,10 @@ export default function Wardrobe() {
   const [editingOutfitId, setEditingOutfitId] = useState(null);
   const [editingItems, setEditingItems] = useState([]);
 
+  // 날짜별 사진
+  const [dailyPhotos, setDailyPhotos] = useState({});
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
   // ── 데이터 로드 ────────────────────────────
   const load = async (category = activeCategory) => {
     const path = category ? `/api/clothes/?category=${category}` : '/api/clothes/';
@@ -100,6 +104,27 @@ export default function Wardrobe() {
     if (calClothes.length > 0) return;
     const res = await authFetch('/api/clothes/');
     if (res.ok) setCalClothes(await res.json());
+  };
+
+  const loadDailyPhotos = async (y = calYear, m = calMonth) => {
+    const res = await authFetch(`/api/outfit/daily-photos?year=${y}&month=${m}`);
+    if (res.ok) setDailyPhotos(await res.json());
+  };
+
+  const handleDailyPhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !calSelectedDate) return;
+    setUploadingPhoto(true);
+    const fd = new FormData();
+    fd.append('date', calSelectedDate);
+    fd.append('image', file);
+    const res = await authFetch('/api/outfit/daily-photo', { method: 'POST', body: fd });
+    setUploadingPhoto(false);
+    if (res.ok) {
+      const data = await res.json();
+      setDailyPhotos(prev => ({ ...prev, [calSelectedDate]: data.photo_url }));
+    }
+    e.target.value = '';
   };
 
   useEffect(() => { load(); loadStats(); }, [activeCategory]);
@@ -155,7 +180,7 @@ export default function Wardrobe() {
 
   // ── 캘린더 패널 제어 ──────────────────────
   const toggleCalendar = () => {
-    if (!calendarOpen) loadCalData();
+    if (!calendarOpen) { loadCalData(); loadDailyPhotos(); }
     setCalendarOpen(o => !o);
     setCalSelectedDate(null);
     setAddMode(false);
@@ -167,13 +192,13 @@ export default function Wardrobe() {
   const calPrevMonth = () => {
     let y = calYear, m = calMonth - 1;
     if (m === 0) { y--; m = 12; }
-    setCalYear(y); setCalMonth(m); loadCalData(y, m);
+    setCalYear(y); setCalMonth(m); loadCalData(y, m); loadDailyPhotos(y, m);
   };
 
   const calNextMonth = () => {
     let y = calYear, m = calMonth + 1;
     if (m === 13) { y++; m = 1; }
-    setCalYear(y); setCalMonth(m); loadCalData(y, m);
+    setCalYear(y); setCalMonth(m); loadCalData(y, m); loadDailyPhotos(y, m);
   };
 
   const calDateKey = (d) =>
@@ -390,7 +415,9 @@ export default function Wardrobe() {
                               )}
                             </div>
 
-                            {hasOutfit && (
+                            {dailyPhotos[key] ? (
+                              <img src={dailyPhotos[key]} alt="" style={{ width: '100%', height: 58, objectFit: 'cover', borderRadius: 6, marginTop: 2 }} />
+                            ) : hasOutfit && (
                               miniThumbs.length > 1 ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, marginTop: 2 }}>
                                   {miniThumbs.slice(0, 4).map((url, i) => (
@@ -455,6 +482,17 @@ export default function Wardrobe() {
                     ) : null}
                     <button onClick={() => { setCalSelectedDate(null); setAddMode(false); setAddItems([]); setEditingOutfitId(null); setEditingItems([]); }} style={{ padding: '5px 10px', border: `1px solid ${theme.border}`, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: theme.subText, fontSize: 13 }}>✕</button>
                   </div>
+                </div>
+
+                {/* 날짜 사진 업로드 */}
+                <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {dailyPhotos[calSelectedDate] && (
+                    <img src={dailyPhotos[calSelectedDate]} alt="오늘 사진" style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, border: `1px solid ${theme.border}`, flexShrink: 0 }} />
+                  )}
+                  <label style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', border: `1px dashed ${theme.primary}`, borderRadius: 8, fontSize: 11, color: theme.primary, fontWeight: 600, flex: 1, justifyContent: 'center' }}>
+                    <span>{uploadingPhoto ? '업로드 중...' : dailyPhotos[calSelectedDate] ? '📷 사진 변경' : '📷 오늘 사진 추가'}</span>
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleDailyPhotoUpload} disabled={uploadingPhoto} />
+                  </label>
                 </div>
 
                 {selectedOutfits.length > 0 && (
