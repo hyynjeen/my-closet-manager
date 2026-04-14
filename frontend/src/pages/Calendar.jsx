@@ -190,7 +190,7 @@ export default function Calendar() {
     <div style={{ minHeight: '100vh', background: theme.bg, color: theme.text }}>
       <NavBar links={NAV_LINKS} />
 
-      <div style={{ maxWidth: 920, margin: '0 auto', padding: '32px 24px', display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <div style={{ maxWidth: selectedDate ? 740 : 580, margin: '0 auto', padding: '28px 20px', display: 'flex', gap: 20, alignItems: 'flex-start' }}>
 
         {/* 달력 */}
         <div style={{ flex: 1 }}>
@@ -237,7 +237,7 @@ export default function Calendar() {
                   onMouseEnter={() => d && setHoveredDate(d)}
                   onMouseLeave={() => setHoveredDate(null)}
                   style={{
-                    height: 96,
+                    height: 72,
                     border: `1.5px solid ${isSelected ? theme.primary : isToday ? theme.accent : theme.border}`,
                     borderRadius: 10,
                     padding: '6px',
@@ -281,7 +281,7 @@ export default function Calendar() {
                             ))}
                           </div>
                         ) : thumb ? (
-                          <img src={thumb} alt="" style={{ width: '100%', height: 44, objectFit: 'cover', borderRadius: 6, marginTop: 2 }} />
+                          <img src={thumb} alt="" style={{ width: '100%', height: 34, objectFit: 'cover', borderRadius: 6, marginTop: 2 }} />
                         ) : (
                           <div style={{
                             width: '100%', height: 6, borderRadius: 4, marginTop: 6,

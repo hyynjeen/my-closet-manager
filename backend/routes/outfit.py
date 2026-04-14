@@ -33,7 +33,7 @@ def get_season_by_temp(temp):
 
 def get_weather(city='Seoul'):
     if not OPENWEATHER_API_KEY:
-        return None, None, None
+        return None, None, None, None, None
     try:
         url = 'https://api.openweathermap.org/data/2.5/weather'
         res = requests.get(url, params={

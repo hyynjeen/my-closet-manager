@@ -271,16 +271,16 @@ export default function Wardrobe() {
 
         {/* ━━━ 슬라이딩 캘린더 패널 (전체 화면 - 옷장 폭) ━━━ */}
         <div style={{
-          width: calendarOpen ? 'calc(100vw - 380px)' : 0,
+          width: calendarOpen ? 'calc(100vw - 420px)' : 0,
           flexShrink: 0,
           overflow: 'hidden',
           transition: 'width 0.4s ease',
-          borderRight: calendarOpen ? `1px solid ${theme.border}` : 'none',
+          boxShadow: calendarOpen ? `1px 0 0 0 ${theme.border}` : 'none',
           background: theme.bg,
           minHeight: 'calc(100vh - 60px)',
         }}>
           {/* 내부 콘텐츠 — 패널 전체 폭 고정 (애니메이션 중에도 레이아웃 유지) */}
-          <div style={{ width: 'calc(100vw - 380px)', padding: '32px 28px', boxSizing: 'border-box' }}>
+          <div style={{ width: 'calc(100vw - 420px)', padding: '28px 24px', boxSizing: 'border-box' }}>
 
             {/* 월 헤더 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -496,16 +496,16 @@ export default function Wardrobe() {
 
         {/* ━━━ 옷장 영역 ━━━ */}
         <div style={{
-          width: calendarOpen ? 380 : '100%',
+          width: calendarOpen ? 420 : '100%',
           flexShrink: 0,
           transition: 'width 0.4s ease',
           minHeight: 'calc(100vh - 60px)',
-          borderLeft: calendarOpen ? 'none' : 'none',
         }}>
           <div style={{
-            maxWidth: calendarOpen ? 380 : 900,
+            maxWidth: calendarOpen ? 420 : 900,
             margin: '0 auto',
-            padding: '32px 24px',
+            padding: '28px 20px',
+            boxSizing: 'border-box',
           }}>
 
             {/* 통계 (사진 포함) */}
