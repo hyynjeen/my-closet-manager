@@ -189,10 +189,20 @@ export default function Wardrobe() {
       setEditingOutfitId(null); setEditingItems([]);
     } else {
       setCalSelectedDate(key);
-      setAddMode(true); setAddItems([]);
-      setEditingOutfitId(null); setEditingItems([]);
       setActiveCategory('');
       loadCalClothes();
+      const outfitsForDay = calData[key] || [];
+      if (outfitsForDay.length > 0) {
+        // 기존 코디 있으면 자동 편집 모드
+        const outfit = outfitsForDay[0];
+        setEditingOutfitId(outfit.id);
+        setEditingItems((outfit.items || []).map(i => i.id));
+        setAddMode(false); setAddItems([]);
+      } else {
+        // 기록 없으면 추가 모드
+        setAddMode(true); setAddItems([]);
+        setEditingOutfitId(null); setEditingItems([]);
+      }
     }
   };
 
@@ -275,20 +285,24 @@ export default function Wardrobe() {
       <NavBar links={NAV_LINKS} />
 
       {/* ── 전체 레이아웃: 캘린더 패널 + 옷장 ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+      <div style={{
+        display: 'flex', alignItems: 'flex-start',
+        height: calendarOpen ? 'calc(100vh - 60px)' : 'auto',
+        overflow: calendarOpen ? 'hidden' : 'visible',
+      }}>
 
         {/* ━━━ 슬라이딩 캘린더 패널 (전체 화면 - 옷장 폭) ━━━ */}
         <div style={{
-          width: calendarOpen ? '70vw' : 0,
+          width: calendarOpen ? '70%' : 0,
           flexShrink: 0,
           overflow: 'hidden',
           transition: 'width 0.4s ease',
           boxShadow: calendarOpen ? `1px 0 0 0 ${theme.border}` : 'none',
           background: theme.bg,
-          minHeight: 'calc(100vh - 60px)',
+          height: calendarOpen ? '100%' : 'auto',
         }}>
-          {/* 내부 콘텐츠 — 패널 전체 폭 고정 (애니메이션 중에도 레이아웃 유지) */}
-          <div style={{ width: '100%', padding: '28px 24px', boxSizing: 'border-box' }}>
+          {/* 내부 콘텐츠 */}
+          <div style={{ width: '100%', padding: '28px 24px', boxSizing: 'border-box', height: '100%', overflowY: 'auto' }}>
 
             {/* 월 헤더 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -431,26 +445,41 @@ export default function Wardrobe() {
                 </div>
 
                 {selectedOutfits.length > 0 && (
-                  <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {selectedOutfits.map((o) => (
-                      <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ display: 'flex', gap: 3, flex: 1, flexWrap: 'wrap' }}>
-                          {(o.items || []).slice(0, 6).map(item => (
-                            item.image_url
-                              ? <img key={item.id} src={item.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6 }} />
-                              : <div key={item.id} style={{ width: 32, height: 32, background: theme.bg, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: theme.subText }}>{item.category}</div>
-                          ))}
-                          {(o.items || []).length > 6 && <span style={{ fontSize: 11, color: theme.subText, alignSelf: 'center' }}>+{(o.items || []).length - 6}</span>}
-                        </div>
-                        {o.temperature != null && <span style={{ fontSize: 11, color: theme.subText, whiteSpace: 'nowrap' }}>{o.temperature}°C</span>}
-                        <button
-                          onClick={() => handleStartEdit(o)}
-                          style={{ ...btnSmGhost, fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap', background: editingOutfitId === o.id ? theme.primary + '18' : 'transparent', borderColor: editingOutfitId === o.id ? theme.primary : theme.border, color: editingOutfitId === o.id ? theme.primary : theme.text }}
+                  <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ fontSize: 11, color: theme.subText, marginBottom: 2 }}>기록된 코디 (클릭해서 선택)</div>
+                    {selectedOutfits.map((o) => {
+                      const isEditing = editingOutfitId === o.id;
+                      return (
+                        <div
+                          key={o.id}
+                          onClick={() => {
+                            setEditingOutfitId(o.id);
+                            setEditingItems((o.items || []).map(i => i.id));
+                            setAddMode(false); setAddItems([]);
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 10, cursor: 'pointer', background: isEditing ? theme.primary + '12' : theme.bg, border: `1.5px solid ${isEditing ? theme.primary + '50' : theme.border}`, transition: 'all 0.15s' }}
                         >
-                          {editingOutfitId === o.id ? '수정 중' : '수정'}
-                        </button>
-                      </div>
-                    ))}
+                          <div style={{ display: 'flex', gap: 3, flex: 1, flexWrap: 'wrap' }}>
+                            {(o.items || []).slice(0, 5).map(item => (
+                              item.image_url
+                                ? <img key={item.id} src={item.image_url} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 5 }} />
+                                : <div key={item.id} style={{ width: 30, height: 30, background: theme.card, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: theme.subText }}>{item.category}</div>
+                            ))}
+                            {(o.items || []).length > 5 && <span style={{ fontSize: 10, color: theme.subText, alignSelf: 'center' }}>+{(o.items || []).length - 5}</span>}
+                          </div>
+                          {o.temperature != null && <span style={{ fontSize: 10, color: theme.subText, whiteSpace: 'nowrap' }}>{o.temperature}°</span>}
+                          {isEditing && <span style={{ fontSize: 10, color: theme.primary, fontWeight: 700, whiteSpace: 'nowrap' }}>편집 중</span>}
+                        </div>
+                      );
+                    })}
+                    {!addMode && (
+                      <button
+                        onClick={() => { setEditingOutfitId(null); setEditingItems([]); setAddMode(true); setAddItems([]); }}
+                        style={{ marginTop: 4, padding: '6px 0', border: `1px dashed ${theme.border}`, borderRadius: 8, background: 'transparent', color: theme.subText, fontSize: 11, cursor: 'pointer' }}
+                      >
+                        + 새 코디 추가
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -460,10 +489,12 @@ export default function Wardrobe() {
 
         {/* ━━━ 옷장 영역 ━━━ */}
         <div style={{
-          width: calendarOpen ? '30vw' : '100%',
+          width: calendarOpen ? '30%' : '100%',
           flexShrink: 0,
           transition: 'width 0.4s ease',
-          minHeight: 'calc(100vh - 60px)',
+          height: calendarOpen ? '100%' : 'auto',
+          overflowY: calendarOpen ? 'auto' : 'visible',
+          minHeight: calendarOpen ? 'unset' : 'calc(100vh - 60px)',
         }}>
           <div style={{
             maxWidth: calendarOpen ? 'none' : 900,
@@ -549,18 +580,17 @@ export default function Wardrobe() {
             )}
 
             {/* 카테고리 탭 */}
-            {!calendarOpen && (
-              <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-                {['전체', ...CATEGORIES].map(cat => {
-                  const active = cat === '전체' ? !activeCategory : activeCategory === cat;
-                  return (
-                    <button key={cat} onClick={() => setActiveCategory(cat === '전체' ? '' : cat)} style={{ padding: '7px 16px', borderRadius: 20, border: `1px solid ${active ? theme.primary : theme.border}`, background: active ? theme.primary : theme.card, color: active ? theme.primaryText : theme.text, cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400 }}>
-                      {cat}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <div style={{ display: 'flex', gap: calendarOpen ? 4 : 8, marginBottom: calendarOpen ? 10 : 20, flexWrap: 'wrap' }}>
+              {['전체', ...CATEGORIES].map(cat => {
+                const active = cat === '전체' ? !activeCategory : activeCategory === cat;
+                return (
+                  <button key={cat} onClick={() => setActiveCategory(cat === '전체' ? '' : cat)}
+                    style={{ padding: calendarOpen ? '4px 10px' : '7px 16px', borderRadius: 20, border: `1px solid ${active ? theme.primary : theme.border}`, background: active ? theme.primary : theme.card, color: active ? theme.primaryText : theme.text, cursor: 'pointer', fontSize: calendarOpen ? 11 : 13, fontWeight: active ? 600 : 400 }}>
+                    {cat}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* 옷장 그리드 */}
             <div style={{
