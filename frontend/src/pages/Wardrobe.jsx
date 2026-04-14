@@ -468,7 +468,7 @@ export default function Wardrobe() {
           <div style={{
             maxWidth: calendarOpen ? 'none' : 900,
             margin: '0 auto',
-            padding: '28px 20px',
+            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 20px',
             boxSizing: 'border-box',
           }}>
 
@@ -573,16 +573,21 @@ export default function Wardrobe() {
               {[...clothes]
                 .sort((a, b) => getSeasonPriority(a.season) - getSeasonPriority(b.season))
                 .map(item => {
-                  const isAddSelected = !editingOutfitId && addItems.includes(item.id);
-                  const isEditSelected = !!editingOutfitId && editingItems.includes(item.id);
-                  const isSelected = isAddSelected || isEditSelected;
-                  const isAlreadyWorn = !!calSelectedDate && !editingOutfitId && alreadyWornIds.has(item.id);
-                  const isInteractive = !!(calSelectedDate && calendarOpen) && (editingOutfitId ? true : !isAlreadyWorn);
+                  // 초록: 추가모드의 이미 착용된 옷 OR 수정모드의 현재 코디에 등록된 옷
+                  const isGreen = !!calSelectedDate && (
+                    editingOutfitId ? editingItems.includes(item.id) : alreadyWornIds.has(item.id)
+                  );
+                  // 파란색: 추가모드에서 새로 선택한 옷
+                  const isBlue = !editingOutfitId && addItems.includes(item.id);
+                  // 추가모드에서 이미 착용된 옷은 클릭 불가
+                  const isInteractive = !!(calSelectedDate && calendarOpen) &&
+                    (!(!editingOutfitId && alreadyWornIds.has(item.id)));
 
                   const handleCardClick = () => {
                     if (editingOutfitId) {
+                      // 수정모드: 등록된 옷 클릭 → 제거, 미등록 옷 클릭 → 추가
                       setEditingItems(prev => prev.includes(item.id) ? prev.filter(i => i !== item.id) : [...prev, item.id]);
-                    } else if (addMode && !isAlreadyWorn) {
+                    } else if (addMode && !alreadyWornIds.has(item.id)) {
                       toggleAddItem(item.id);
                     }
                   };
@@ -592,25 +597,25 @@ export default function Wardrobe() {
                       key={item.id}
                       onClick={isInteractive ? handleCardClick : undefined}
                       style={{
-                        background: isSelected ? theme.primary + '18' : isAlreadyWorn ? '#10B98118' : theme.card,
-                        border: `2px solid ${isSelected ? theme.primary : isAlreadyWorn ? '#10B981' : theme.border}`,
+                        background: isGreen ? '#10B98118' : isBlue ? theme.primary + '18' : theme.card,
+                        border: `2px solid ${isGreen ? '#10B981' : isBlue ? theme.primary : theme.border}`,
                         borderRadius: 12,
                         overflow: 'hidden',
                         cursor: isInteractive ? 'pointer' : 'default',
                         transition: 'border-color 0.15s, transform 0.1s',
-                        transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                        transform: (isGreen || isBlue) ? 'scale(1.02)' : 'scale(1)',
                         position: 'relative',
                       }}
                     >
-                      {/* 선택 체크마크 */}
-                      {isSelected && (
+                      {/* 초록 체크 (이미 착용됨 / 수정 중인 코디 항목) */}
+                      {isGreen && (
+                        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>✓</div>
+                      )}
+                      {/* 파란 체크 (추가모드에서 새로 선택) */}
+                      {isBlue && (
                         <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 26, height: 26, borderRadius: '50%', background: theme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>✓</div>
                       )}
-                      {/* 이미 착용 표시 */}
-                      {isAlreadyWorn && (
-                        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700 }}>✓</div>
-                      )}
-                      {isInteractive && !isSelected && !isAlreadyWorn && (
+                      {isInteractive && !isGreen && !isBlue && (
                         <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.03)', zIndex: 1, pointerEvents: 'none' }} />
                       )}
 
