@@ -6,8 +6,15 @@ export default function NavBar({ links = [] }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const [open, setOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const ref = useRef(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
 
   useEffect(() => {
     const close = (e) => {
@@ -34,7 +41,7 @@ export default function NavBar({ links = [] }) {
       <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet Manager</span>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-        {links.map(({ to, label }) => (
+        {links.filter(({ mobileOnly }) => !mobileOnly || isMobile).map(({ to, label }) => (
           <Link key={to} to={to} style={{ color: theme.navText, textDecoration: 'none', fontSize: 14 }}>
             {label}
           </Link>

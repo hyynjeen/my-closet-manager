@@ -4,7 +4,7 @@ import NavBar from '../components/NavBar';
 
 const NAV_LINKS = [
   { to: '/wardrobe', label: '내 옷장' },
-  { to: '/calendar', label: '착용 기록' },
+  { to: '/calendar', label: '착용 기록', mobileOnly: true },
 ];
 
 const API_URL = process.env.REACT_APP_API_URL || '';

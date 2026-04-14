@@ -5,7 +5,7 @@ import NavBar from '../components/NavBar';
 
 const NAV_LINKS = [
   { to: '/outfit', label: '코디 추천' },
-  { to: '/calendar', label: '착용 기록' },
+  { to: '/calendar', label: '착용 기록', mobileOnly: true },
 ];
 
 const API_URL = process.env.REACT_APP_API_URL || '';
@@ -183,9 +183,17 @@ export default function Wardrobe() {
   const handleCalDateClick = (d) => {
     if (!d) return;
     const key = calDateKey(d);
-    setCalSelectedDate(prev => prev === key ? null : key);
-    setAddMode(false); setAddItems([]);
-    setEditingOutfitId(null); setEditingItems([]);
+    if (calSelectedDate === key) {
+      setCalSelectedDate(null);
+      setAddMode(false); setAddItems([]);
+      setEditingOutfitId(null); setEditingItems([]);
+    } else {
+      setCalSelectedDate(key);
+      setAddMode(true); setAddItems([]);
+      setEditingOutfitId(null); setEditingItems([]);
+      setActiveCategory('');
+      loadCalClothes();
+    }
   };
 
   // 착용 추가
@@ -271,7 +279,7 @@ export default function Wardrobe() {
 
         {/* ━━━ 슬라이딩 캘린더 패널 (전체 화면 - 옷장 폭) ━━━ */}
         <div style={{
-          width: calendarOpen ? 'calc(100vw - 420px)' : 0,
+          width: calendarOpen ? '70vw' : 0,
           flexShrink: 0,
           overflow: 'hidden',
           transition: 'width 0.4s ease',
@@ -280,7 +288,7 @@ export default function Wardrobe() {
           minHeight: 'calc(100vh - 60px)',
         }}>
           {/* 내부 콘텐츠 — 패널 전체 폭 고정 (애니메이션 중에도 레이아웃 유지) */}
-          <div style={{ width: 'calc(100vw - 420px)', padding: '28px 24px', boxSizing: 'border-box' }}>
+          <div style={{ width: '100%', padding: '28px 24px', boxSizing: 'border-box' }}>
 
             {/* 월 헤더 */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -295,11 +303,8 @@ export default function Wardrobe() {
               <button onClick={calNextMonth} style={{ width: 38, height: 38, border: `1px solid ${theme.border}`, borderRadius: 8, background: theme.card, cursor: 'pointer', fontSize: 20, color: theme.text, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
             </div>
 
-            {/* 달력 + 사이드 패널 */}
-            <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-
-              {/* 달력 그리드 */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+            {/* 달력 그리드 */}
+            <div>
                 {/* 요일 헤더 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 8, background: theme.card, borderRadius: 10, padding: '10px 0', border: `1px solid ${theme.border}` }}>
                   {CAL_DAYS.map((d, i) => (
@@ -379,130 +384,89 @@ export default function Wardrobe() {
                 </div>
 
                 {/* 범례 */}
-                <div style={{ display: 'flex', gap: 16, marginTop: 14, fontSize: 11, color: theme.subText }}>
+                <div style={{ display: 'flex', gap: 16, marginTop: 14, fontSize: 11, color: theme.subText, flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 16, height: 16, borderRadius: '50%', background: theme.primary }} /> 오늘
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <div style={{ width: 20, height: 6, borderRadius: 3, background: `linear-gradient(90deg, ${theme.primary}, ${theme.accent})` }} /> 착용 기록
                   </div>
-                </div>
-              </div>
-
-              {/* 날짜 상세 사이드 패널 */}
-              {calSelectedDate && (
-                <div style={{ width: 260, flexShrink: 0 }}>
-                  <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 16, overflow: 'hidden' }}>
-                    {/* 날짜 헤더 */}
-                    <div style={{ padding: '16px 20px', background: theme.primary, color: '#fff' }}>
-                      <div style={{ fontSize: 17, fontWeight: 700 }}>{calSelectedDate}</div>
-                      <div style={{ fontSize: 12, opacity: 0.85, marginTop: 2 }}>
-                        {selectedOutfits.length > 0 ? `${selectedOutfits.length}개 코디 기록` : '기록 없음'}
-                      </div>
-                    </div>
-
-                    <div style={{ padding: 16 }}>
-                      {/* 기존 코디 목록 */}
-                      {selectedOutfits.length === 0 ? (
-                        <div style={{ fontSize: 13, color: theme.subText, textAlign: 'center', padding: '12px 0', marginBottom: 8 }}>아직 코디 기록이 없어요</div>
-                      ) : (
-                        selectedOutfits.map((o, oi) => (
-                          <div key={o.id} style={{ marginBottom: 12, paddingBottom: 12, borderBottom: oi < selectedOutfits.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
-                            {editingOutfitId === o.id ? (
-                              /* 수정 모드 */
-                              <div>
-                                <div style={{ fontSize: 12, fontWeight: 700, color: theme.primary, marginBottom: 8 }}>
-                                  착용 코디 수정 <span style={{ fontWeight: 400, color: theme.subText }}>({editingItems.length}개)</span>
-                                </div>
-                                <div style={{ maxHeight: 200, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                  {['상의', '하의', '아우터', '신발', '가방', '기타'].map(cat => {
-                                    const catItems = calClothes.filter(c => c.category === cat);
-                                    if (!catItems.length) return null;
-                                    return (
-                                      <div key={cat}>
-                                        <div style={{ fontSize: 11, color: theme.primary, fontWeight: 700, marginBottom: 3 }}>{cat}</div>
-                                        {catItems.map(c => (
-                                          <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '3px 0', cursor: 'pointer' }}>
-                                            <input type="checkbox" checked={editingItems.includes(c.id)} onChange={() => setEditingItems(prev => prev.includes(c.id) ? prev.filter(i => i !== c.id) : [...prev, c.id])} style={{ accentColor: theme.primary, width: 14, height: 14 }} />
-                                            {c.image_url && <img src={c.image_url} alt="" style={{ width: 28, height: 28, objectFit: 'cover', borderRadius: 4 }} />}
-                                            <span style={{ fontSize: 12, color: theme.text }}>{c.sub_category || c.category}{c.color ? ` · ${c.color}` : ''}</span>
-                                          </label>
-                                        ))}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                                  <button onClick={handleSaveEdit} disabled={editingItems.length === 0} style={{ ...btnSm, flex: 1, opacity: editingItems.length === 0 ? 0.5 : 1 }}>저장</button>
-                                  <button onClick={() => { setEditingOutfitId(null); setEditingItems([]); }} style={{ ...btnSmGhost, flex: 1 }}>취소</button>
-                                </div>
-                              </div>
-                            ) : (
-                              /* 일반 보기 */
-                              <div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginBottom: 6 }}>
-                                  {(o.items || []).slice(0, 4).map(item => (
-                                    <div key={item.id} style={{ position: 'relative' }}>
-                                      {item.image_url
-                                        ? <img src={item.image_url} alt="" style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6 }} />
-                                        : <div style={{ width: '100%', aspectRatio: '1', background: theme.bg, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <span style={{ fontSize: 9, color: theme.subText }}>{item.category}</span>
-                                          </div>
-                                      }
-                                      <div style={{ position: 'absolute', bottom: 2, left: 2, right: 2, background: 'rgba(0,0,0,0.5)', borderRadius: 3, fontSize: 8, color: '#fff', textAlign: 'center' }}>
-                                        {item.sub_category || item.category}
-                                      </div>
-                                    </div>
-                                  ))}
-                                  {(o.items || []).length > 4 && (
-                                    <div style={{ width: '100%', aspectRatio: '1', background: theme.border, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: theme.subText }}>
-                                      +{(o.items || []).length - 4}
-                                    </div>
-                                  )}
-                                </div>
-                                {o.temperature != null && <div style={{ fontSize: 11, color: theme.subText, marginBottom: 6 }}>{o.temperature}°C · {o.weather}</div>}
-                                <button onClick={() => handleStartEdit(o)} style={{ ...btnSmGhost, fontSize: 11, padding: '4px 10px' }}>수정</button>
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      )}
-
-                      {/* 착용 추가 버튼 / 저장 */}
-                      {addMode ? (
-                        <div>
-                          <div style={{ fontSize: 12, color: theme.primary, fontWeight: 600, marginBottom: 8 }}>
-                            오른쪽 옷장에서 옷을 선택하세요
-                          </div>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button onClick={handleSaveAdd} disabled={addItems.length === 0 || saving} style={{ ...btnSm, flex: 1, background: '#10B981', opacity: addItems.length === 0 ? 0.5 : 1, cursor: addItems.length === 0 ? 'not-allowed' : 'pointer' }}>
-                              {saving ? '저장 중...' : `저장 (${addItems.length}개)`}
-                            </button>
-                            <button onClick={() => { setAddMode(false); setAddItems([]); }} style={{ ...btnSmGhost, flex: 1 }}>취소</button>
-                          </div>
-                        </div>
-                      ) : !editingOutfitId && (
-                        <button onClick={handleStartAdd} style={{ width: '100%', padding: '10px 0', border: 'none', borderRadius: 10, cursor: 'pointer', background: theme.primary, color: theme.primaryText, fontSize: 13, fontWeight: 600 }}>
-                          + 착용 추가
-                        </button>
-                      )}
-                    </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 3, border: '2px solid #10B981', background: '#10B98120' }} /> 이미 착용됨
                   </div>
                 </div>
-              )}
             </div>
+
+            {/* 날짜 선택 액션 바 */}
+            {calSelectedDate && (
+              <div style={{ marginTop: 16, padding: '14px 18px', background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <span style={{ fontWeight: 700, color: theme.text, fontSize: 15 }}>{calSelectedDate}</span>
+                    <span style={{ color: theme.subText, fontSize: 12, marginLeft: 8 }}>
+                      {selectedOutfits.length > 0 ? `${selectedOutfits.length}개 코디 기록됨` : '기록 없음'}
+                    </span>
+                    {(editingOutfitId ? editingItems.length : addItems.length) > 0 && (
+                      <span style={{ color: theme.primary, fontSize: 12, fontWeight: 600, marginLeft: 8 }}>
+                        · {editingOutfitId ? editingItems.length : addItems.length}개 선택됨
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {editingOutfitId ? (
+                      <>
+                        <button onClick={handleSaveEdit} disabled={editingItems.length === 0} style={{ ...btnSm, opacity: editingItems.length === 0 ? 0.5 : 1 }}>수정 저장</button>
+                        <button onClick={() => { setEditingOutfitId(null); setEditingItems([]); setAddMode(true); }} style={btnSmGhost}>취소</button>
+                      </>
+                    ) : addItems.length > 0 ? (
+                      <>
+                        <button onClick={handleSaveAdd} disabled={saving} style={{ ...btnSm, background: '#10B981' }}>
+                          {saving ? '저장 중...' : `저장 (${addItems.length}개)`}
+                        </button>
+                        <button onClick={() => setAddItems([])} style={btnSmGhost}>선택 해제</button>
+                      </>
+                    ) : null}
+                    <button onClick={() => { setCalSelectedDate(null); setAddMode(false); setAddItems([]); setEditingOutfitId(null); setEditingItems([]); }} style={{ padding: '5px 10px', border: `1px solid ${theme.border}`, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: theme.subText, fontSize: 13 }}>✕</button>
+                  </div>
+                </div>
+
+                {selectedOutfits.length > 0 && (
+                  <div style={{ marginTop: 12, borderTop: `1px solid ${theme.border}`, paddingTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {selectedOutfits.map((o) => (
+                      <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ display: 'flex', gap: 3, flex: 1, flexWrap: 'wrap' }}>
+                          {(o.items || []).slice(0, 6).map(item => (
+                            item.image_url
+                              ? <img key={item.id} src={item.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6 }} />
+                              : <div key={item.id} style={{ width: 32, height: 32, background: theme.bg, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: theme.subText }}>{item.category}</div>
+                          ))}
+                          {(o.items || []).length > 6 && <span style={{ fontSize: 11, color: theme.subText, alignSelf: 'center' }}>+{(o.items || []).length - 6}</span>}
+                        </div>
+                        {o.temperature != null && <span style={{ fontSize: 11, color: theme.subText, whiteSpace: 'nowrap' }}>{o.temperature}°C</span>}
+                        <button
+                          onClick={() => handleStartEdit(o)}
+                          style={{ ...btnSmGhost, fontSize: 11, padding: '3px 10px', whiteSpace: 'nowrap', background: editingOutfitId === o.id ? theme.primary + '18' : 'transparent', borderColor: editingOutfitId === o.id ? theme.primary : theme.border, color: editingOutfitId === o.id ? theme.primary : theme.text }}
+                        >
+                          {editingOutfitId === o.id ? '수정 중' : '수정'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         {/* ━━━ 옷장 영역 ━━━ */}
         <div style={{
-          width: calendarOpen ? 420 : '100%',
+          width: calendarOpen ? '30vw' : '100%',
           flexShrink: 0,
           transition: 'width 0.4s ease',
           minHeight: 'calc(100vh - 60px)',
         }}>
           <div style={{
-            maxWidth: calendarOpen ? 420 : 900,
+            maxWidth: calendarOpen ? 'none' : 900,
             margin: '0 auto',
             padding: '28px 20px',
             boxSizing: 'border-box',
@@ -575,10 +539,12 @@ export default function Wardrobe() {
               </div>
             </div>
 
-            {/* 추가 모드 배너 */}
-            {addMode && (
-              <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: theme.primary + '12', border: `1px solid ${theme.primary + '40'}`, fontSize: 12, color: theme.primary, fontWeight: 600 }}>
-                옷을 클릭하여 선택하세요 ({addItems.length}개)
+            {/* 선택 모드 배너 */}
+            {calendarOpen && calSelectedDate && (
+              <div style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 10, background: theme.primary + '12', border: `1px solid ${theme.primary}40`, fontSize: 12, color: theme.primary, fontWeight: 600 }}>
+                {editingOutfitId
+                  ? `수정 모드 · 옷을 클릭해 선택/해제하세요 (${editingItems.length}개 선택됨)`
+                  : `${calSelectedDate} · 추가할 옷을 클릭하세요 (${addItems.length}개 선택됨)`}
               </div>
             )}
 
@@ -607,30 +573,45 @@ export default function Wardrobe() {
               {[...clothes]
                 .sort((a, b) => getSeasonPriority(a.season) - getSeasonPriority(b.season))
                 .map(item => {
-                  const isSelected = addItems.includes(item.id);
-                  const isSelectable = addMode;
+                  const isAddSelected = !editingOutfitId && addItems.includes(item.id);
+                  const isEditSelected = !!editingOutfitId && editingItems.includes(item.id);
+                  const isSelected = isAddSelected || isEditSelected;
+                  const isAlreadyWorn = !!calSelectedDate && !editingOutfitId && alreadyWornIds.has(item.id);
+                  const isInteractive = !!(calSelectedDate && calendarOpen) && (editingOutfitId ? true : !isAlreadyWorn);
+
+                  const handleCardClick = () => {
+                    if (editingOutfitId) {
+                      setEditingItems(prev => prev.includes(item.id) ? prev.filter(i => i !== item.id) : [...prev, item.id]);
+                    } else if (addMode && !isAlreadyWorn) {
+                      toggleAddItem(item.id);
+                    }
+                  };
 
                   return (
                     <div
                       key={item.id}
-                      onClick={isSelectable ? () => toggleAddItem(item.id) : undefined}
+                      onClick={isInteractive ? handleCardClick : undefined}
                       style={{
-                        background: theme.card,
-                        border: `2px solid ${isSelected ? theme.primary : theme.border}`,
+                        background: isSelected ? theme.primary + '18' : isAlreadyWorn ? '#10B98118' : theme.card,
+                        border: `2px solid ${isSelected ? theme.primary : isAlreadyWorn ? '#10B981' : theme.border}`,
                         borderRadius: 12,
                         overflow: 'hidden',
-                        cursor: isSelectable ? 'pointer' : 'default',
+                        cursor: isInteractive ? 'pointer' : 'default',
                         transition: 'border-color 0.15s, transform 0.1s',
-                        transform: isSelected ? 'scale(1.03)' : 'scale(1)',
+                        transform: isSelected ? 'scale(1.02)' : 'scale(1)',
                         position: 'relative',
                       }}
                     >
-                      {/* 체크마크 */}
+                      {/* 선택 체크마크 */}
                       {isSelected && (
                         <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 26, height: 26, borderRadius: '50%', background: theme.primary, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700, boxShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>✓</div>
                       )}
-                      {isSelectable && !isSelected && (
-                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.04)', zIndex: 1, pointerEvents: 'none' }} />
+                      {/* 이미 착용 표시 */}
+                      {isAlreadyWorn && (
+                        <div style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, width: 24, height: 24, borderRadius: '50%', background: '#10B981', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700 }}>✓</div>
+                      )}
+                      {isInteractive && !isSelected && !isAlreadyWorn && (
+                        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.03)', zIndex: 1, pointerEvents: 'none' }} />
                       )}
 
                       {item.image_url
