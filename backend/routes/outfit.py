@@ -170,6 +170,17 @@ def update_outfit(outfit_id):
     return jsonify(outfit.to_dict())
 
 
+@outfit_bp.route('/<int:outfit_id>', methods=['DELETE'])
+@jwt_required()
+def delete_outfit(outfit_id):
+    user_id = int(get_jwt_identity())
+    outfit = Outfit.query.filter_by(id=outfit_id, user_id=user_id).first_or_404()
+    OutfitItem.query.filter_by(outfit_id=outfit_id).delete()
+    db.session.delete(outfit)
+    db.session.commit()
+    return jsonify({'message': 'deleted'}), 200
+
+
 @outfit_bp.route('/saved', methods=['GET'])
 @jwt_required()
 def saved_outfits():

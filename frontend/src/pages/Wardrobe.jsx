@@ -231,6 +231,19 @@ export default function Wardrobe() {
     }
   };
 
+  // 코디 삭제
+  const handleDeleteOutfit = async (outfit_id) => {
+    if (!window.confirm('이 코디 기록을 삭제하시겠습니까?')) return;
+    const res = await authFetch(`/api/outfit/${outfit_id}`, { method: 'DELETE' });
+    if (res.ok) {
+      if (editingOutfitId === outfit_id) {
+        setEditingOutfitId(null); setEditingItems([]);
+        setAddMode(true); setAddItems([]);
+      }
+      loadCalData(); loadStats();
+    }
+  };
+
   // 코디 수정
   const handleStartEdit = async (outfit) => {
     setEditingOutfitId(outfit.id);
@@ -450,25 +463,33 @@ export default function Wardrobe() {
                     {selectedOutfits.map((o) => {
                       const isEditing = editingOutfitId === o.id;
                       return (
-                        <div
-                          key={o.id}
-                          onClick={() => {
-                            setEditingOutfitId(o.id);
-                            setEditingItems((o.items || []).map(i => i.id));
-                            setAddMode(false); setAddItems([]);
-                          }}
-                          style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 10, cursor: 'pointer', background: isEditing ? theme.primary + '12' : theme.bg, border: `1.5px solid ${isEditing ? theme.primary + '50' : theme.border}`, transition: 'all 0.15s' }}
-                        >
-                          <div style={{ display: 'flex', gap: 3, flex: 1, flexWrap: 'wrap' }}>
-                            {(o.items || []).slice(0, 5).map(item => (
-                              item.image_url
-                                ? <img key={item.id} src={item.image_url} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 5 }} />
-                                : <div key={item.id} style={{ width: 30, height: 30, background: theme.card, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: theme.subText }}>{item.category}</div>
-                            ))}
-                            {(o.items || []).length > 5 && <span style={{ fontSize: 10, color: theme.subText, alignSelf: 'center' }}>+{(o.items || []).length - 5}</span>}
+                        <div key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div
+                            onClick={() => {
+                              setEditingOutfitId(o.id);
+                              setEditingItems((o.items || []).map(i => i.id));
+                              setAddMode(false); setAddItems([]);
+                            }}
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 10, cursor: 'pointer', flex: 1, background: isEditing ? theme.primary + '12' : theme.bg, border: `1.5px solid ${isEditing ? theme.primary + '50' : theme.border}`, transition: 'all 0.15s' }}
+                          >
+                            <div style={{ display: 'flex', gap: 3, flex: 1, flexWrap: 'wrap' }}>
+                              {(o.items || []).slice(0, 5).map(item => (
+                                item.image_url
+                                  ? <img key={item.id} src={item.image_url} alt="" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: 5 }} />
+                                  : <div key={item.id} style={{ width: 30, height: 30, background: theme.card, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, color: theme.subText }}>{item.category}</div>
+                              ))}
+                              {(o.items || []).length > 5 && <span style={{ fontSize: 10, color: theme.subText, alignSelf: 'center' }}>+{(o.items || []).length - 5}</span>}
+                            </div>
+                            {o.temperature != null && <span style={{ fontSize: 10, color: theme.subText, whiteSpace: 'nowrap' }}>{o.temperature}°</span>}
+                            {isEditing && <span style={{ fontSize: 10, color: theme.primary, fontWeight: 700, whiteSpace: 'nowrap' }}>편집 중</span>}
                           </div>
-                          {o.temperature != null && <span style={{ fontSize: 10, color: theme.subText, whiteSpace: 'nowrap' }}>{o.temperature}°</span>}
-                          {isEditing && <span style={{ fontSize: 10, color: theme.primary, fontWeight: 700, whiteSpace: 'nowrap' }}>편집 중</span>}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteOutfit(o.id); }}
+                            style={{ flexShrink: 0, width: 28, height: 28, border: 'none', borderRadius: 7, cursor: 'pointer', background: '#FEE2E2', color: '#DC2626', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="코디 삭제"
+                          >
+                            ×
+                          </button>
                         </div>
                       );
                     })}
@@ -603,22 +624,22 @@ export default function Wardrobe() {
               {[...clothes]
                 .sort((a, b) => getSeasonPriority(a.season) - getSeasonPriority(b.season))
                 .map(item => {
-                  // 초록: 추가모드의 이미 착용된 옷 OR 수정모드의 현재 코디에 등록된 옷
+                  // 초록: 수정모드의 현재 코디 항목 OR 추가모드에서 기존 착용됨(but 재선택 안 한 것)
                   const isGreen = !!calSelectedDate && (
-                    editingOutfitId ? editingItems.includes(item.id) : alreadyWornIds.has(item.id)
+                    editingOutfitId
+                      ? editingItems.includes(item.id)
+                      : (alreadyWornIds.has(item.id) && !addItems.includes(item.id))
                   );
-                  // 파란색: 추가모드에서 새로 선택한 옷
+                  // 파란색: 추가모드에서 선택한 옷 (기존 착용 여부 무관)
                   const isBlue = !editingOutfitId && addItems.includes(item.id);
-                  // 추가모드에서 이미 착용된 옷은 클릭 불가
-                  const isInteractive = !!(calSelectedDate && calendarOpen) &&
-                    (!(!editingOutfitId && alreadyWornIds.has(item.id)));
+                  // 날짜 선택 시 모든 옷 클릭 가능
+                  const isInteractive = !!(calSelectedDate && calendarOpen);
 
                   const handleCardClick = () => {
                     if (editingOutfitId) {
-                      // 수정모드: 등록된 옷 클릭 → 제거, 미등록 옷 클릭 → 추가
                       setEditingItems(prev => prev.includes(item.id) ? prev.filter(i => i !== item.id) : [...prev, item.id]);
-                    } else if (addMode && !alreadyWornIds.has(item.id)) {
-                      toggleAddItem(item.id);
+                    } else if (addMode) {
+                      toggleAddItem(item.id); // 이미 착용된 옷도 재선택 가능
                     }
                   };
 

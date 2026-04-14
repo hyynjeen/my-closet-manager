@@ -35,10 +35,10 @@ export default function NavBar({ links = [] }) {
   return (
     <nav style={{
       background: theme.navBg, padding: '0 32px', height: 56,
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
       position: 'sticky', top: 0, zIndex: 100,
     }}>
-      <span style={{ color: theme.navText, fontWeight: 700, fontSize: 17 }}>My Closet Manager</span>
+      <span style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: theme.navText, fontWeight: 700, fontSize: 17, whiteSpace: 'nowrap', pointerEvents: 'none' }}>My Closet Manager</span>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
         {links.filter(({ mobileOnly }) => !mobileOnly || isMobile).map(({ to, label }) => (
