@@ -7,19 +7,29 @@ const API_URL = process.env.REACT_APP_API_URL || '';
 export default function Login() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const [form, setForm] = useState({ email: '', password: '', nickname: '' });
+  const [form, setForm] = useState({ email: '', password: '', passwordConfirm: '', nickname: '' });
   const [error, setError] = useState('');
   const [isRegister, setIsRegister] = useState(false);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const validatePassword = (pw) => {
+    if (pw.length < 8) return '비밀번호는 8자 이상이어야 합니다.';
+    if (!/[A-Za-z]/.test(pw)) return '영문자를 포함해주세요.';
+    if (!/\d/.test(pw)) return '숫자를 포함해주세요.';
+    if (!/[@$!%*#?&]/.test(pw)) return '특수문자(@$!%*#?&)를 포함해주세요.';
+    return '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (isRegister && !form.nickname.trim()) {
-      setError('닉네임을 입력해주세요.');
-      return;
+    if (isRegister) {
+      if (!form.nickname.trim()) { setError('닉네임을 입력해주세요.'); return; }
+      const pwError = validatePassword(form.password);
+      if (pwError) { setError(pwError); return; }
+      if (form.password !== form.passwordConfirm) { setError('비밀번호가 일치하지 않습니다.'); return; }
     }
 
     const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
@@ -37,7 +47,7 @@ export default function Login() {
 
     if (isRegister) {
       setIsRegister(false);
-      setForm({ email: '', password: '', nickname: '' });
+      setForm({ email: '', password: '', passwordConfirm: '', nickname: '' });
       alert('회원가입 성공! 로그인해주세요.');
     } else {
       localStorage.setItem('token', data.access_token);
@@ -83,7 +93,16 @@ export default function Login() {
           {isRegister && (
             <input name="nickname" placeholder="닉네임 *" value={form.nickname} onChange={handleChange} required style={inputStyle} />
           )}
-          <input name="password" type="password" placeholder="비밀번호" value={form.password} onChange={handleChange} required style={inputStyle} />
+          <input name="password" type="password" placeholder={isRegister ? '비밀번호 (영문+숫자+특수문자 8자 이상)' : '비밀번호'} value={form.password} onChange={handleChange} required style={inputStyle} />
+          {isRegister && (
+            <input name="passwordConfirm" type="password" placeholder="비밀번호 확인" value={form.passwordConfirm} onChange={handleChange} required style={{
+              ...inputStyle,
+              borderColor: form.passwordConfirm && form.password !== form.passwordConfirm ? '#EF4444' : inputStyle.borderColor,
+            }} />
+          )}
+          {isRegister && form.passwordConfirm && form.password !== form.passwordConfirm && (
+            <p style={{ margin: 0, fontSize: 12, color: '#EF4444' }}>비밀번호가 일치하지 않습니다.</p>
+          )}
           {error && <p style={{ margin: 0, fontSize: 13, color: '#EF4444' }}>{error}</p>}
           <button
             type="submit"

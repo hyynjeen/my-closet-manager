@@ -1,4 +1,5 @@
 import os
+import re
 import cloudinary
 import cloudinary.uploader
 from flask import Blueprint, request, jsonify
@@ -26,6 +27,14 @@ def register():
         return jsonify({'error': 'email과 password는 필수입니다.'}), 400
     if not nickname:
         return jsonify({'error': '닉네임은 필수입니다.'}), 400
+    if not re.search(r'[A-Za-z]', password):
+        return jsonify({'error': '비밀번호에 영문자를 포함해주세요.'}), 400
+    if not re.search(r'\d', password):
+        return jsonify({'error': '비밀번호에 숫자를 포함해주세요.'}), 400
+    if not re.search(r'[@$!%*#?&]', password):
+        return jsonify({'error': '비밀번호에 특수문자(@$!%*#?&)를 포함해주세요.'}), 400
+    if len(password) < 8:
+        return jsonify({'error': '비밀번호는 8자 이상이어야 합니다.'}), 400
 
     if User.query.filter_by(email=email).first():
         return jsonify({'error': '이미 사용 중인 이메일입니다.'}), 409
