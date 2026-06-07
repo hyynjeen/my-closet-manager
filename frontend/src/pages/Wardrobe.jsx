@@ -571,10 +571,10 @@ export default function Wardrobe() {
           <div style={{
             maxWidth: calendarOpen ? 'none' : 1160,
             margin: '0 auto',
-            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 48px',
+            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 40px',
             boxSizing: 'border-box',
             display: calendarOpen ? 'block' : 'flex',
-            gap: 28,
+            gap: 40,
             alignItems: 'flex-start',
           }}>
           {/* ─── 옷장 메인 ─── */}
