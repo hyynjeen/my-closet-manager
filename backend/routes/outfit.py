@@ -88,16 +88,17 @@ def get_weather(city='Seoul'):
         temp = round(cur['main']['temp'])
         weather = cur['weather'][0]['description']
 
-        # 오늘 최고·최저는 5일 예보에서 계산
+        # 오늘 최고·최저는 5일 예보에서 계산 (KST 기준)
+        KST = timezone(timedelta(hours=9))
+        today_kst = datetime.now(KST).strftime('%Y-%m-%d')
         forecast = requests.get('https://api.openweathermap.org/data/2.5/forecast', params={
             'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric',
         }, timeout=5).json()
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_temps = [
-            item['main']['temp']
-            for item in forecast.get('list', [])
-            if item['dt_txt'].startswith(today)
-        ]
+        today_temps = []
+        for item in forecast.get('list', []):
+            dt_utc = datetime.strptime(item['dt_txt'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+            if dt_utc.astimezone(KST).strftime('%Y-%m-%d') == today_kst:
+                today_temps.append(item['main']['temp'])
         if today_temps:
             temp_min = round(min(today_temps))
             temp_max = round(max(today_temps))
