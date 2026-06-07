@@ -571,7 +571,7 @@ export default function Wardrobe() {
           <div style={{
             maxWidth: calendarOpen ? 'none' : 1160,
             margin: '0 auto',
-            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 32px',
+            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 48px',
             boxSizing: 'border-box',
             display: calendarOpen ? 'block' : 'flex',
             gap: 28,
