@@ -3,6 +3,7 @@ import random
 import requests
 import cloudinary
 import cloudinary.uploader
+import google.generativeai as genai
 from datetime import datetime, timezone, timedelta, date
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
@@ -26,6 +27,31 @@ PERSONAL_COLOR_MAP = {
 outfit_bp = Blueprint('outfit', __name__)
 
 OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY')
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
+
+def get_ai_comment(outfit, temp, weather, personal_color):
+    if not GEMINI_API_KEY:
+        return None
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        items_desc = []
+        for item in outfit.values():
+            if item:
+                parts = [item.get('category', ''), item.get('color', ''), item.get('sub_category') or '']
+                items_desc.append(' '.join(p for p in parts if p))
+        prompt = (
+            f"오늘 날씨는 {weather or '보통'}, 기온은 {temp}°C입니다.\n"
+            f"추천 코디: {', '.join(items_desc)}\n"
+            f"퍼스널 컬러: {personal_color or '없음'}\n\n"
+            "위 코디에 대해 스타일리스트처럼 짧고 세련된 코디 조언을 2-3문장으로 한국어로 작성해주세요. "
+            "따뜻하고 친근한 톤으로 작성해주세요."
+        )
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception:
+        return None
 
 
 def get_season_by_temp(temp):
@@ -94,6 +120,7 @@ def recommend():
 
     user = User.query.get(user_id)
     recommended_colors = PERSONAL_COLOR_MAP.get(user.personal_color, []) if user and user.personal_color else []
+    ai_comment = get_ai_comment(outfit, temp, weather, user.personal_color if user else None)
 
     return jsonify({
         'outfit': outfit,
@@ -103,6 +130,7 @@ def recommend():
         'weather': weather,
         'personal_color': user.personal_color if user else None,
         'recommended_colors': recommended_colors,
+        'ai_comment': ai_comment,
     })
 
 

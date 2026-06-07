@@ -286,6 +286,25 @@ export default function Outfit() {
           </div>
         )}
 
+        {/* AI 코디 조언 */}
+        {result?.ai_comment && (
+          <div style={{
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            borderRadius: 14,
+            padding: '16px 20px',
+            marginTop: 16,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 16 }}>✨</span>
+              <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>AI 스타일 조언</div>
+            </div>
+            <p style={{ fontSize: 13, color: theme.subText, lineHeight: 1.7, margin: 0 }}>
+              {result.ai_comment}
+            </p>
+          </div>
+        )}
+
         {/* 퍼스널 컬러 추천 */}
         {result?.recommended_colors?.length > 0 && (
           <div style={{
