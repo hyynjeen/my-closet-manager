@@ -565,98 +565,11 @@ export default function Wardrobe() {
             boxSizing: 'border-box',
           }}>
 
-            {/* 통계 (사진 포함) */}
-            {stats && !calendarOpen && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-                <div style={{ background: theme.statA, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.primary, marginBottom: 10 }}>최근 3개월 많이 입은 옷 TOP 3</div>
-                  {stats.most_worn.filter(x => x.count > 0).length === 0
-                    ? <div style={{ fontSize: 13, color: theme.subText }}>착용 기록 없음</div>
-                    : stats.most_worn.filter(x => x.count > 0).map((x, i) => (
-                      <div key={x.item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: i < 2 ? `1px solid ${theme.border}` : 'none' }}>
-                        <div style={{ flexShrink: 0 }}>
-                          {x.item.image_url
-                            ? <img src={x.item.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
-                            : <div style={{ width: 40, height: 40, borderRadius: 8, background: theme.primary + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: theme.primary, fontWeight: 700 }}>{(x.item.sub_category || x.item.category || '?').slice(0, 2)}</div>
-                          }
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: theme.accent, marginRight: 4 }}>{i + 1}위</span>{x.item.sub_category || x.item.category}
-                          </div>
-                          <div style={{ fontSize: 11, color: theme.subText }}>{x.count}회 착용</div>
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-                <div style={{ background: theme.statB, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px 20px' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: theme.secondary, marginBottom: 10 }}>최근 3개월 적게 입은 옷 TOP 3</div>
-                  {stats.least_worn.length === 0
-                    ? <div style={{ fontSize: 13, color: theme.subText }}>옷 없음</div>
-                    : stats.least_worn.map((x, i) => (
-                      <div key={x.item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: i < 2 ? `1px solid ${theme.border}` : 'none' }}>
-                        <div style={{ flexShrink: 0 }}>
-                          {x.item.image_url
-                            ? <img src={x.item.image_url} alt="" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8 }} />
-                            : <div style={{ width: 40, height: 40, borderRadius: 8, background: theme.secondary + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: theme.secondary, fontWeight: 700 }}>{(x.item.sub_category || x.item.category || '?').slice(0, 2)}</div>
-                          }
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            <span style={{ color: theme.secondary, marginRight: 4 }}>{i + 1}위</span>{x.item.sub_category || x.item.category}
-                          </div>
-                          <div style={{ fontSize: 11, color: theme.subText }}>{x.count}회 착용</div>
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              </div>
-            )}
+            {/* 메인 레이아웃: 옷장(좌) + 사이드바(우) */}
+            <div style={{ display: calendarOpen ? 'block' : 'flex', gap: 24, alignItems: 'flex-start' }}>
 
-            {/* 옷장 분석 차트 */}
-            {clothes.length > 0 && !calendarOpen && (() => {
-              const catCount = {};
-              const colorCount = {};
-              clothes.forEach(c => {
-                const cat = c.category || '기타';
-                catCount[cat] = (catCount[cat] || 0) + 1;
-                if (c.color) colorCount[c.color] = (colorCount[c.color] || 0) + 1;
-              });
-              const topColors = Object.entries(colorCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
-              const catColors = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6'];
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-                  <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.subText, marginBottom: 12 }}>카테고리 분포</div>
-                    <Doughnut
-                      data={{
-                        labels: Object.keys(catCount),
-                        datasets: [{ data: Object.values(catCount), backgroundColor: catColors, borderWidth: 0 }],
-                      }}
-                      options={{ plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, color: theme.text, boxWidth: 10, padding: 8 } } }, cutout: '60%' }}
-                    />
-                  </div>
-                  <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px' }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.subText, marginBottom: 12 }}>색상 TOP {topColors.length}</div>
-                    <Bar
-                      data={{
-                        labels: topColors.map(([c]) => c),
-                        datasets: [{ data: topColors.map(([, n]) => n), backgroundColor: theme.primary + 'CC', borderRadius: 6 }],
-                      }}
-                      options={{
-                        indexAxis: 'y', plugins: { legend: { display: false } },
-                        scales: {
-                          x: { ticks: { color: theme.subText, font: { size: 10 } }, grid: { color: theme.border } },
-                          y: { ticks: { color: theme.text, font: { size: 11 } }, grid: { display: false } },
-                        },
-                      }}
-                    />
-                  </div>
-                </div>
-              );
-            })()}
+              {/* 왼쪽: 옷장 */}
+              <div style={{ flex: 1, minWidth: 0 }}>
 
             {/* 헤더 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
@@ -783,6 +696,97 @@ export default function Wardrobe() {
                 </div>
               )}
             </div>
+              </div>{/* 왼쪽 끝 */}
+
+              {/* 오른쪽 사이드바: 통계 + 차트 */}
+              {!calendarOpen && (
+                <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                  {/* 많이 입은 옷 */}
+                  {stats && (
+                    <div style={{ background: theme.statA, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: theme.primary, marginBottom: 10 }}>많이 입은 옷 TOP 3</div>
+                      {stats.most_worn.filter(x => x.count > 0).length === 0
+                        ? <div style={{ fontSize: 12, color: theme.subText }}>착용 기록 없음</div>
+                        : stats.most_worn.filter(x => x.count > 0).map((x, i) => (
+                          <div key={x.item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: i < 2 ? `1px solid ${theme.border}` : 'none' }}>
+                            {x.item.image_url
+                              ? <img src={x.item.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                              : <div style={{ width: 32, height: 32, borderRadius: 6, background: theme.primary + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: theme.primary, fontWeight: 700, flexShrink: 0 }}>{(x.item.sub_category || x.item.category || '?').slice(0, 2)}</div>
+                            }
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ color: theme.accent, marginRight: 3 }}>{i + 1}위</span>{x.item.sub_category || x.item.category}
+                              </div>
+                              <div style={{ fontSize: 10, color: theme.subText }}>{x.count}회</div>
+                            </div>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+
+                  {/* 적게 입은 옷 */}
+                  {stats && (
+                    <div style={{ background: theme.statB, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '14px 16px' }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: theme.secondary, marginBottom: 10 }}>적게 입은 옷 TOP 3</div>
+                      {stats.least_worn.length === 0
+                        ? <div style={{ fontSize: 12, color: theme.subText }}>옷 없음</div>
+                        : stats.least_worn.map((x, i) => (
+                          <div key={x.item.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: i < 2 ? `1px solid ${theme.border}` : 'none' }}>
+                            {x.item.image_url
+                              ? <img src={x.item.image_url} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
+                              : <div style={{ width: 32, height: 32, borderRadius: 6, background: theme.secondary + '22', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: theme.secondary, fontWeight: 700, flexShrink: 0 }}>{(x.item.sub_category || x.item.category || '?').slice(0, 2)}</div>
+                            }
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <span style={{ color: theme.secondary, marginRight: 3 }}>{i + 1}위</span>{x.item.sub_category || x.item.category}
+                              </div>
+                              <div style={{ fontSize: 10, color: theme.subText }}>{x.count}회</div>
+                            </div>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  )}
+
+                  {/* 카테고리 도넛 차트 */}
+                  {clothes.length > 0 && (() => {
+                    const catCount = {};
+                    const colorCount = {};
+                    clothes.forEach(c => {
+                      catCount[c.category || '기타'] = (catCount[c.category || '기타'] || 0) + 1;
+                      if (c.color) colorCount[c.color] = (colorCount[c.color] || 0) + 1;
+                    });
+                    const topColors = Object.entries(colorCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
+                    const catColors = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6'];
+                    return (
+                      <>
+                        <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '14px 16px' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: theme.subText, marginBottom: 10 }}>카테고리 분포</div>
+                          <div style={{ height: 160 }}>
+                            <Doughnut
+                              data={{ labels: Object.keys(catCount), datasets: [{ data: Object.values(catCount), backgroundColor: catColors, borderWidth: 0 }] }}
+                              options={{ maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 9 }, color: theme.text, boxWidth: 8, padding: 6 } } }, cutout: '65%' }}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '14px 16px' }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: theme.subText, marginBottom: 10 }}>색상 TOP {topColors.length}</div>
+                          <div style={{ height: 130 }}>
+                            <Bar
+                              data={{ labels: topColors.map(([c]) => c), datasets: [{ data: topColors.map(([, n]) => n), backgroundColor: theme.primary + 'CC', borderRadius: 4 }] }}
+                              options={{ maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { color: theme.subText, font: { size: 9 } }, grid: { color: theme.border } }, y: { ticks: { color: theme.text, font: { size: 10 } }, grid: { display: false } } } }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              )}{/* 사이드바 끝 */}
+
+            </div>{/* 메인 레이아웃 끝 */}
           </div>
         </div>
       </div>
