@@ -103,29 +103,22 @@ def get_weather(city='Seoul'):
     if not OPENWEATHER_API_KEY:
         return None, None, None, None, None
     try:
-        # 현재 날씨
-        cur = requests.get('https://api.openweathermap.org/data/2.5/weather', params={
-            'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric', 'lang': 'kr',
+        # 좌표 조회
+        geo = requests.get('http://api.openweathermap.org/geo/1.0/direct', params={
+            'q': city, 'limit': 1, 'appid': OPENWEATHER_API_KEY,
         }, timeout=5).json()
-        temp = round(cur['main']['temp'])
-        weather = cur['weather'][0]['description']
+        lat, lon = geo[0]['lat'], geo[0]['lon']
 
-        # 오늘 최고·최저는 5일 예보에서 계산 (KST 기준)
-        KST = timezone(timedelta(hours=9))
-        today_kst = datetime.now(KST).strftime('%Y-%m-%d')
-        forecast = requests.get('https://api.openweathermap.org/data/2.5/forecast', params={
-            'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric',
+        # One Call API 3.0 — 현재 날씨 + 오늘 일별 최고·최저
+        one_call = requests.get('https://api.openweathermap.org/data/3.0/onecall', params={
+            'lat': lat, 'lon': lon, 'appid': OPENWEATHER_API_KEY,
+            'units': 'metric', 'lang': 'kr', 'exclude': 'minutely,hourly,alerts',
         }, timeout=5).json()
-        today_temps = []
-        for item in forecast.get('list', []):
-            dt_utc = datetime.strptime(item['dt_txt'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
-            if dt_utc.astimezone(KST).strftime('%Y-%m-%d') == today_kst:
-                today_temps.append(item['main']['temp'])
-        if today_temps:
-            temp_min = round(min(today_temps))
-            temp_max = round(max(today_temps))
-        else:
-            temp_min = temp_max = temp
+
+        temp = round(one_call['current']['temp'])
+        weather = one_call['current']['weather'][0]['description']
+        temp_min = round(one_call['daily'][0]['temp']['min'])
+        temp_max = round(one_call['daily'][0]['temp']['max'])
 
         return temp, temp_min, temp_max, weather, get_season_by_temp(temp)
     except Exception:
