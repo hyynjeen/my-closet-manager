@@ -30,7 +30,7 @@ OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 
-def get_ai_outfit(items, temp, weather, personal_color, recent_outfits=None):
+def get_ai_outfit(items, temp, temp_min, temp_max, weather, personal_color, recent_outfits=None):
     if not GEMINI_API_KEY:
         return None, None
     try:
@@ -66,14 +66,14 @@ def get_ai_outfit(items, temp, weather, personal_color, recent_outfits=None):
 
         prompt = (
             f"당신은 패션 스타일리스트입니다.\n"
-            f"오늘 날씨: {weather or '보통'}, 기온: {temp}°C\n"
+            f"오늘 날씨: {weather or '보통'}, 현재기온: {temp}°C, 최고: {temp_max}°C, 최저: {temp_min}°C\n"
             f"퍼스널 컬러: {personal_color or '없음'}\n"
             f"{recent_section}\n"
             f"사용자 옷장:\n" + "\n".join(items_list) + "\n\n"
             "위 옷장에서 오늘 날씨, 퍼스널 컬러, 착용 이력을 고려해 코디를 골라주세요.\n"
             "자주 착용한 옷은 피하고 오랫동안 안 입은 옷을 우선 추천하세요.\n"
             "각 카테고리(상의, 하의, 아우터, 신발, 가방, 기타)에서 하나씩만 선택하고, "
-            "없는 카테고리는 건너뛰세요. 아우터는 기온 15°C 이하일 때만 포함하세요.\n"
+            "없는 카테고리는 건너뛰세요. 일교차가 10°C 이상이거나 최저기온이 15°C 이하면 아우터를 포함하세요.\n"
             "반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):\n"
             "{\"selected_ids\": [숫자, ...], \"comment\": \"코디 조언 2-3문장\"}"
         )
@@ -153,7 +153,7 @@ def recommend():
     all_dicts = [i.to_dict() for i in all_items]
     recent_outfits = Outfit.query.filter_by(user_id=user_id).order_by(Outfit.created_at.desc()).limit(10).all()
     recent_dicts = [o.to_dict() for o in recent_outfits]
-    selected_ids, ai_comment = get_ai_outfit(all_dicts, temp, weather, user.personal_color if user else None, recent_dicts)
+    selected_ids, ai_comment = get_ai_outfit(all_dicts, temp, temp_min, temp_max, weather, user.personal_color if user else None, recent_dicts)
 
     outfit = {'top': None, 'bottom': None, 'outer': None, 'shoes': None, 'bag': None, 'accessory': None}
 
