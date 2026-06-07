@@ -569,16 +569,11 @@ export default function Wardrobe() {
           minHeight: calendarOpen ? 'unset' : 'calc(100vh - 60px)',
         }}>
           <div style={{
-            maxWidth: calendarOpen ? 'none' : 1160,
+            maxWidth: calendarOpen ? 'none' : 900,
             margin: '0 auto',
-            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 40px',
+            padding: calendarOpen ? '24px 20px 28px 16px' : '28px 20px',
             boxSizing: 'border-box',
-            display: calendarOpen ? 'block' : 'flex',
-            gap: 40,
-            alignItems: 'flex-start',
           }}>
-          {/* ─── 옷장 메인 ─── */}
-          <div style={{ flex: 1, minWidth: 0 }}>
 
             {/* 헤더 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
@@ -708,16 +703,22 @@ export default function Wardrobe() {
                 </div>
               )}
             </div>
-          </div>{/* 옷장 메인 끝 */}
+          </div>
+        </div>
+      </div>
 
-          {/* ─── 오른쪽 sticky 사이드바 ─── */}
-          {!calendarOpen && (
-            <div style={{
-              width: 220, flexShrink: 0,
-              position: 'sticky', top: 72,
-              alignSelf: 'flex-start',
-              display: 'flex', flexDirection: 'column', gap: 10,
-            }}>
+      {/* ─── 오른쪽 fixed 사이드바 (오른쪽 여백 중앙) ─── */}
+      {!calendarOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 72,
+          right: 'max(8px, calc((100vw - 1340px) / 4))',
+          width: 220,
+          maxHeight: 'calc(100vh - 84px)',
+          overflowY: 'auto',
+          display: 'flex', flexDirection: 'column', gap: 10,
+          zIndex: 40,
+        }}>
 
               {/* 많이 입은 옷 */}
               {stats && (
@@ -801,12 +802,8 @@ export default function Wardrobe() {
                 </div>
               )}
 
-            </div>
-          )}{/* 사이드바 끝 */}
-
-          </div>
         </div>
-      </div>
+      )}{/* 사이드바 끝 */}
 
       {/* ── 옷 추가/수정 모달 ── */}
       {showModal && (
