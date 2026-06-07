@@ -103,22 +103,39 @@ def get_weather(city='Seoul'):
     if not OPENWEATHER_API_KEY:
         return None, None, None, None, None
     try:
-        # 좌표 조회
-        geo = requests.get('http://api.openweathermap.org/geo/1.0/direct', params={
-            'q': city, 'limit': 1, 'appid': OPENWEATHER_API_KEY,
+        # 현재 날씨
+        cur = requests.get('https://api.openweathermap.org/data/2.5/weather', params={
+            'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric', 'lang': 'kr',
         }, timeout=5).json()
-        lat, lon = geo[0]['lat'], geo[0]['lon']
+        temp = round(cur['main']['temp'])
+        weather = cur['weather'][0]['description']
 
-        # One Call API 3.0 — 현재 날씨 + 오늘 일별 최고·최저
-        one_call = requests.get('https://api.openweathermap.org/data/3.0/onecall', params={
-            'lat': lat, 'lon': lon, 'appid': OPENWEATHER_API_KEY,
-            'units': 'metric', 'lang': 'kr', 'exclude': 'minutely,hourly,alerts',
-        }, timeout=5).json()
-
-        temp = round(one_call['current']['temp'])
-        weather = one_call['current']['weather'][0]['description']
-        temp_min = round(one_call['daily'][0]['temp']['min'])
-        temp_max = round(one_call['daily'][0]['temp']['max'])
+        # One Call API 3.0으로 정확한 일별 최고·최저 시도
+        try:
+            geo = requests.get('http://api.openweathermap.org/geo/1.0/direct', params={
+                'q': city, 'limit': 1, 'appid': OPENWEATHER_API_KEY,
+            }, timeout=5).json()
+            lat, lon = geo[0]['lat'], geo[0]['lon']
+            one_call = requests.get('https://api.openweathermap.org/data/3.0/onecall', params={
+                'lat': lat, 'lon': lon, 'appid': OPENWEATHER_API_KEY,
+                'units': 'metric', 'lang': 'kr', 'exclude': 'minutely,hourly,alerts',
+            }, timeout=5).json()
+            temp_min = round(one_call['daily'][0]['temp']['min'])
+            temp_max = round(one_call['daily'][0]['temp']['max'])
+        except Exception:
+            # fallback: 5일 예보에서 오늘 KST 기준 최고·최저 계산
+            KST = timezone(timedelta(hours=9))
+            today_kst = datetime.now(KST).strftime('%Y-%m-%d')
+            forecast = requests.get('https://api.openweathermap.org/data/2.5/forecast', params={
+                'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric',
+            }, timeout=5).json()
+            today_temps = []
+            for item in forecast.get('list', []):
+                dt_utc = datetime.strptime(item['dt_txt'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
+                if dt_utc.astimezone(KST).strftime('%Y-%m-%d') == today_kst:
+                    today_temps.append(item['main']['temp'])
+            temp_min = round(min(today_temps)) if today_temps else temp
+            temp_max = round(max(today_temps)) if today_temps else temp
 
         return temp, temp_min, temp_max, weather, get_season_by_temp(temp)
     except Exception:
