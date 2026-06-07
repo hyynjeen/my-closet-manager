@@ -30,28 +30,40 @@ OPENWEATHER_API_KEY = os.environ.get('OPENWEATHER_API_KEY')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 
-def get_ai_comment(outfit, temp, weather, personal_color):
+def get_ai_outfit(items, temp, weather, personal_color):
     if not GEMINI_API_KEY:
-        return None
+        return None, None
     try:
+        import json, re
         genai.configure(api_key=GEMINI_API_KEY)
         model = genai.GenerativeModel('gemini-1.5-flash')
-        items_desc = []
-        for item in outfit.values():
-            if item:
-                parts = [item.get('category', ''), item.get('color', ''), item.get('sub_category') or '']
-                items_desc.append(' '.join(p for p in parts if p))
+        items_list = []
+        for item in items:
+            items_list.append(
+                f"ID:{item['id']} 카테고리:{item['category']} "
+                f"종류:{item.get('sub_category') or ''} 색상:{item.get('color') or ''} "
+                f"스타일:{item.get('style') or ''} 소재:{item.get('material') or ''}"
+            )
         prompt = (
-            f"오늘 날씨는 {weather or '보통'}, 기온은 {temp}°C입니다.\n"
-            f"추천 코디: {', '.join(items_desc)}\n"
+            f"당신은 패션 스타일리스트입니다.\n"
+            f"오늘 날씨: {weather or '보통'}, 기온: {temp}°C\n"
             f"퍼스널 컬러: {personal_color or '없음'}\n\n"
-            "위 코디에 대해 스타일리스트처럼 짧고 세련된 코디 조언을 2-3문장으로 한국어로 작성해주세요. "
-            "따뜻하고 친근한 톤으로 작성해주세요."
+            f"사용자 옷장:\n" + "\n".join(items_list) + "\n\n"
+            "위 옷장에서 오늘 날씨와 퍼스널 컬러에 어울리는 코디를 골라주세요.\n"
+            "각 카테고리(상의, 하의, 아우터, 신발, 가방, 기타)에서 하나씩만 선택하고, "
+            "없는 카테고리는 건너뛰세요. 아우터는 기온 15°C 이하일 때만 포함하세요.\n"
+            "반드시 아래 JSON 형식으로만 응답하세요 (다른 텍스트 없이):\n"
+            "{\"selected_ids\": [숫자, ...], \"comment\": \"코디 조언 2-3문장\"}"
         )
         response = model.generate_content(prompt)
-        return response.text
+        text = response.text.strip()
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            data = json.loads(match.group())
+            return data.get('selected_ids', []), data.get('comment', '')
+        return None, None
     except Exception:
-        return None
+        return None, None
 
 
 def get_season_by_temp(temp):
@@ -86,6 +98,9 @@ def get_weather(city='Seoul'):
         return None, None, None, None, None
 
 
+CATEGORY_KEY = {'상의': 'top', '하의': 'bottom', '아우터': 'outer', '신발': 'shoes', '가방': 'bag', '기타': 'accessory'}
+
+
 @outfit_bp.route('/recommend', methods=['GET'])
 @jwt_required()
 def recommend():
@@ -94,33 +109,43 @@ def recommend():
 
     temp, temp_min, temp_max, weather, season = get_weather(city)
 
-    items = ClothingItem.query.filter_by(user_id=user_id).all()
-    if not items:
+    all_items = ClothingItem.query.filter_by(user_id=user_id).all()
+    if not all_items:
         return jsonify({'error': '옷장에 옷이 없습니다. 먼저 옷을 추가해주세요.'}), 404
-
-    # 계절이 확인된 경우 해당 계절 옷 우선 필터링
-    if season:
-        season_items = [i for i in items if season in (i.season or '').split(',')]
-        if season_items:
-            items = season_items
-
-    by_category = {}
-    for item in items:
-        cat = item.category or '기타'
-        by_category.setdefault(cat, []).append(item)
-
-    outfit = {
-        'top': random.choice(by_category['상의']).to_dict() if '상의' in by_category else None,
-        'bottom': random.choice(by_category['하의']).to_dict() if '하의' in by_category else None,
-        'outer': random.choice(by_category['아우터']).to_dict() if '아우터' in by_category else None,
-        'shoes': random.choice(by_category['신발']).to_dict() if '신발' in by_category else None,
-        'bag': random.choice(by_category['가방']).to_dict() if '가방' in by_category else None,
-        'accessory': random.choice(by_category['기타']).to_dict() if '기타' in by_category else None,
-    }
 
     user = User.query.get(user_id)
     recommended_colors = PERSONAL_COLOR_MAP.get(user.personal_color, []) if user and user.personal_color else []
-    ai_comment = get_ai_comment(outfit, temp, weather, user.personal_color if user else None)
+
+    all_dicts = [i.to_dict() for i in all_items]
+    selected_ids, ai_comment = get_ai_outfit(all_dicts, temp, weather, user.personal_color if user else None)
+
+    outfit = {'top': None, 'bottom': None, 'outer': None, 'shoes': None, 'bag': None, 'accessory': None}
+
+    if selected_ids:
+        id_map = {i['id']: i for i in all_dicts}
+        for sid in selected_ids:
+            item = id_map.get(sid)
+            if item:
+                key = CATEGORY_KEY.get(item.get('category'), 'accessory')
+                if outfit[key] is None:
+                    outfit[key] = item
+    else:
+        # AI 실패 시 랜덤 폴백
+        if season:
+            season_items = [i for i in all_items if season in (i.season or '').split(',')]
+            if season_items:
+                all_items = season_items
+        by_category = {}
+        for item in all_items:
+            by_category.setdefault(item.category or '기타', []).append(item)
+        outfit = {
+            'top': random.choice(by_category['상의']).to_dict() if '상의' in by_category else None,
+            'bottom': random.choice(by_category['하의']).to_dict() if '하의' in by_category else None,
+            'outer': random.choice(by_category['아우터']).to_dict() if '아우터' in by_category else None,
+            'shoes': random.choice(by_category['신발']).to_dict() if '신발' in by_category else None,
+            'bag': random.choice(by_category['가방']).to_dict() if '가방' in by_category else None,
+            'accessory': random.choice(by_category['기타']).to_dict() if '기타' in by_category else None,
+        }
 
     return jsonify({
         'outfit': outfit,

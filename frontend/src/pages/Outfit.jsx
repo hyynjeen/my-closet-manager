@@ -240,8 +240,14 @@ export default function Outfit() {
         {/* 코디 목록 */}
         {items.length > 0 && (
           <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: theme.subText, marginBottom: 12, letterSpacing: '0.3px' }}>
-              오늘의 추천 코디 · {items.length}개
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: theme.subText, letterSpacing: '0.3px' }}>
+                AI 추천 코디 · {items.length}개
+              </span>
+              <span style={{
+                fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+                background: theme.primary + '22', color: theme.primary,
+              }}>✨ Gemini</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {items.map(({ label, item }) => (
