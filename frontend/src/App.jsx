@@ -6,6 +6,7 @@ import Outfit from './pages/Outfit';
 import Calendar from './pages/Calendar';
 import ProfileEdit from './pages/ProfileEdit';
 import Settings from './pages/Settings';
+import History from './pages/History';
 
 function PrivateRoute({ children }) {
   return localStorage.getItem('token') ? children : <Navigate to="/login" replace />;
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/calendar" element={<PrivateRoute><Calendar /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><ProfileEdit /></PrivateRoute>} />
           <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
+          <Route path="/history" element={<PrivateRoute><History /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>

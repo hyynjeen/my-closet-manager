@@ -4,6 +4,7 @@ import NavBar from '../components/NavBar';
 
 const NAV_LINKS = [
   { to: '/wardrobe', label: '내 옷장' },
+  { to: '/history', label: '코디 히스토리' },
   { to: '/calendar', label: '착용 기록', mobileOnly: true },
 ];
 
@@ -56,11 +57,25 @@ export default function Outfit() {
     setError('');
     setSaved(false);
     setLiked(false);
+    setResult(null);
     const res = await authFetch('/api/outfit/recommend');
     const data = await res.json();
     setLoading(false);
     if (!res.ok) { setError(data.error); return; }
     setResult(data);
+  };
+
+  const shareOutfit = async () => {
+    const items = [outfit.top, outfit.bottom, outfit.outer, outfit.shoes, outfit.bag, outfit.accessory].filter(Boolean);
+    const text = `✨ AI 추천 코디 (${result.temperature != null ? result.temperature + '°C ' : ''}${result.weather || ''})\n` +
+      items.map(i => `${i.category}: ${i.color || ''} ${i.sub_category || ''}`).join('\n') +
+      (result.ai_comment ? `\n\n${result.ai_comment}` : '');
+    if (navigator.share) {
+      await navigator.share({ title: 'My Closet AI 코디 추천', text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      alert('클립보드에 복사됐어요!');
+    }
   };
 
   const saveOutfit = async () => {
@@ -231,11 +246,26 @@ export default function Outfit() {
                   ✓ 착용 기록 완료
                 </div>
               )}
+              <button onClick={shareOutfit} style={{ ...btnGhost, fontSize: 13 }}>공유</button>
             </>
           )}
         </div>
 
         {error && <p style={{ color: '#EF4444', fontSize: 14 }}>{error}</p>}
+
+        {/* AI 로딩 스피너 */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            <div style={{
+              width: 52, height: 52, border: `4px solid ${theme.border}`,
+              borderTopColor: theme.primary, borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite', margin: '0 auto 18px',
+            }} />
+            <div style={{ fontSize: 15, fontWeight: 700, color: theme.text }}>AI가 코디를 분석 중이에요...</div>
+            <div style={{ fontSize: 13, color: theme.subText, marginTop: 6 }}>날씨·착용이력·퍼스널컬러를 분석하고 있어요</div>
+          </div>
+        )}
 
         {/* 코디 목록 */}
         {items.length > 0 && (
@@ -295,17 +325,23 @@ export default function Outfit() {
         {/* AI 코디 조언 */}
         {result?.ai_comment && (
           <div style={{
-            background: theme.card,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 14,
-            padding: '16px 20px',
+            background: `linear-gradient(135deg, ${theme.primary}15 0%, ${theme.accent}10 100%)`,
+            border: `1.5px solid ${theme.primary}40`,
+            borderRadius: 16,
+            padding: '20px 22px',
             marginTop: 16,
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 16 }}>✨</span>
-              <div style={{ fontSize: 13, fontWeight: 700, color: theme.text }}>AI 스타일 조언</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 10, background: theme.primary + '22',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+              }}>✨</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 800, color: theme.primary }}>Gemini AI 스타일 조언</div>
+                <div style={{ fontSize: 10, color: theme.subText, marginTop: 1 }}>착용이력·날씨·퍼스널컬러 분석 결과</div>
+              </div>
             </div>
-            <p style={{ fontSize: 13, color: theme.subText, lineHeight: 1.7, margin: 0 }}>
+            <p style={{ fontSize: 14, color: theme.text, lineHeight: 1.8, margin: 0, fontWeight: 500 }}>
               {result.ai_comment}
             </p>
           </div>

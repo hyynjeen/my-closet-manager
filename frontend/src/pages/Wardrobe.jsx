@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../ThemeContext';
 import NavBar from '../components/NavBar';
+import { Doughnut, Bar } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
 
 const NAV_LINKS = [
   { to: '/outfit', label: '코디 추천' },
@@ -611,6 +614,49 @@ export default function Wardrobe() {
                 </div>
               </div>
             )}
+
+            {/* 옷장 분석 차트 */}
+            {clothes.length > 0 && !calendarOpen && (() => {
+              const catCount = {};
+              const colorCount = {};
+              clothes.forEach(c => {
+                const cat = c.category || '기타';
+                catCount[cat] = (catCount[cat] || 0) + 1;
+                if (c.color) colorCount[c.color] = (colorCount[c.color] || 0) + 1;
+              });
+              const topColors = Object.entries(colorCount).sort((a, b) => b[1] - a[1]).slice(0, 6);
+              const catColors = ['#6366F1','#F59E0B','#10B981','#EF4444','#3B82F6','#8B5CF6'];
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+                  <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.subText, marginBottom: 12 }}>카테고리 분포</div>
+                    <Doughnut
+                      data={{
+                        labels: Object.keys(catCount),
+                        datasets: [{ data: Object.values(catCount), backgroundColor: catColors, borderWidth: 0 }],
+                      }}
+                      options={{ plugins: { legend: { position: 'bottom', labels: { font: { size: 10 }, color: theme.text, boxWidth: 10, padding: 8 } } }, cutout: '60%' }}
+                    />
+                  </div>
+                  <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: 12, padding: '16px' }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.subText, marginBottom: 12 }}>색상 TOP {topColors.length}</div>
+                    <Bar
+                      data={{
+                        labels: topColors.map(([c]) => c),
+                        datasets: [{ data: topColors.map(([, n]) => n), backgroundColor: theme.primary + 'CC', borderRadius: 6 }],
+                      }}
+                      options={{
+                        indexAxis: 'y', plugins: { legend: { display: false } },
+                        scales: {
+                          x: { ticks: { color: theme.subText, font: { size: 10 } }, grid: { color: theme.border } },
+                          y: { ticks: { color: theme.text, font: { size: 11 } }, grid: { display: false } },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* 헤더 */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>

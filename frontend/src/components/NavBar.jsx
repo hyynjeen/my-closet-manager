@@ -80,6 +80,10 @@ export default function NavBar({ links = [] }) {
                 style={{ display: 'block', padding: '12px 16px', color: theme.text, textDecoration: 'none', fontSize: 14, borderBottom: `1px solid ${theme.border}` }}>
                 회원정보 수정
               </Link>
+              <Link to="/history" onClick={() => setOpen(false)}
+                style={{ display: 'block', padding: '12px 16px', color: theme.text, textDecoration: 'none', fontSize: 14, borderBottom: `1px solid ${theme.border}` }}>
+                코디 히스토리
+              </Link>
               <Link to="/settings" onClick={() => setOpen(false)}
                 style={{ display: 'block', padding: '12px 16px', color: theme.text, textDecoration: 'none', fontSize: 14, borderBottom: `1px solid ${theme.border}` }}>
                 환경설정
