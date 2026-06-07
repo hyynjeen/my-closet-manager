@@ -81,18 +81,29 @@ def get_weather(city='Seoul'):
     if not OPENWEATHER_API_KEY:
         return None, None, None, None, None
     try:
-        url = 'https://api.openweathermap.org/data/2.5/weather'
-        res = requests.get(url, params={
-            'q': city,
-            'appid': OPENWEATHER_API_KEY,
-            'units': 'metric',
-            'lang': 'kr',
-        }, timeout=5)
-        data = res.json()
-        temp = round(data['main']['temp'])
-        temp_min = round(data['main']['temp_min'])
-        temp_max = round(data['main']['temp_max'])
-        weather = data['weather'][0]['description']
+        # 현재 날씨
+        cur = requests.get('https://api.openweathermap.org/data/2.5/weather', params={
+            'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric', 'lang': 'kr',
+        }, timeout=5).json()
+        temp = round(cur['main']['temp'])
+        weather = cur['weather'][0]['description']
+
+        # 오늘 최고·최저는 5일 예보에서 계산
+        forecast = requests.get('https://api.openweathermap.org/data/2.5/forecast', params={
+            'q': city, 'appid': OPENWEATHER_API_KEY, 'units': 'metric',
+        }, timeout=5).json()
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_temps = [
+            item['main']['temp']
+            for item in forecast.get('list', [])
+            if item['dt_txt'].startswith(today)
+        ]
+        if today_temps:
+            temp_min = round(min(today_temps))
+            temp_max = round(max(today_temps))
+        else:
+            temp_min = temp_max = temp
+
         return temp, temp_min, temp_max, weather, get_season_by_temp(temp)
     except Exception:
         return None, None, None, None, None
